@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="flex h-full flex-col justify-between transition-all duration-300 ease-in-out border-r bg-[#003366]"
+		class="flex h-full flex-col justify-between transition-all duration-300 ease-in-out border-r bg-[#feb913]"
 		:class="sidebarStore.isSidebarCollapsed ? 'w-14' : 'w-56'"
 	>
 		<div
@@ -104,7 +104,7 @@
 					"
 				>
 					<Tooltip v-if="readOnlyMode && sidebarStore.isSidebarCollapsed">
-						<CircleAlert class="size-4 stroke-1.5 text-white cursor-pointer" />
+						<CircleAlert class="size-4 stroke-1.5 text-black cursor-pointer" />
 						<template #body>
 							<div
 								class="max-w-[30ch] rounded bg-surface-gray-7 px-2 py-1 text-center text-p-xs text-ink-white shadow-xl"
@@ -124,7 +124,7 @@
 					"
 				>
 					<CollapseSidebar
-						class="size-4 text-white duration-300 stroke-1.5 ease-in-out cursor-pointer"
+						class="size-4 text-black duration-300 stroke-1.5 ease-in-out cursor-pointer"
 						:class="{
 							'[transform:rotateY(180deg)]': sidebarStore.isSidebarCollapsed,
 						}"

@@ -92,7 +92,7 @@
 									</span>
 									<Info class="size-3" />
 									<div
-										class="hidden group-hover:block rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-xl absolute left-0 top-full mt-2"
+										class="hidden group-hover:block rounded bg-gray-900 px-2 py-1 text-xs text-black shadow-xl absolute left-0 top-full mt-2"
 									>
 										{{ Math.ceil(lesson.data.membership.progress) }}%
 										{{ __('completed') }}
