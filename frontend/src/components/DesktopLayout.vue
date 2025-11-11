@@ -7,7 +7,7 @@
 				>
 					<AppSidebar />
 				</div>
-				<div class="w-full overflow-auto" id="scrollContainer" style="background-image: url(https://genkisushi.co.id/wp-content/uploads/2020/02/bg-white-texture-scaled.jpg);">
+				<div class="w-full overflow-auto" id="scrollContainer">
 					<slot />
 				</div>
 			</div>

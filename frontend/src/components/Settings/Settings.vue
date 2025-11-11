@@ -2,14 +2,14 @@
 	<Dialog v-model="show" :options="{ size: '5xl' }">
 		<template #body>
 			<div class="flex h-[calc(100vh_-_8rem)]">
-				<div class="flex w-52 shrink-0 flex-col bg-[#feb913] p-2">
-					<h1 class="mb-3 px-2 pt-2 text-lg font-semibold text-black">
+				<div class="flex w-52 shrink-0 flex-col bg-[#39bdf8] p-2">
+					<h1 class="mb-3 px-2 pt-2 text-lg font-semibold text-white">
 						{{ __('Settings') }}
 					</h1>
 					<div v-for="tab in tabs" :key="tab.label">
 						<div
 							v-if="!tab.hideLabel"
-							class="mb-2 mt-3 flex cursor-pointer gap-1.5 px-1 text-base font-medium text-black transition-all duration-300 ease-in-out"
+							class="mb-2 mt-3 flex cursor-pointer gap-1.5 px-1 text-base font-medium text-white transition-all duration-300 ease-in-out"
 						>
 							<span>{{ __(tab.label) }}</span>
 						</div>
@@ -21,8 +21,8 @@
 								class="w-full"
 								:class="
 									activeTab?.label == item.label
-										? 'bg-[#feb913] shadow-sm'
-										: 'hover:bg-[#feb913]'
+										? 'bg-[#0087d0] shadow-sm'
+										: 'hover:bg-[#0087d0]'
 								"
 								@click="activeTab = item"
 							/>
