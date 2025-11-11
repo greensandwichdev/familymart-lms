@@ -7,8 +7,8 @@
 					isCollapsed
 						? 'px-0 w-auto'
 						: open
-						? 'bg-[#feb913] shadow-sm px-2 w-52'
-						: 'hover:hover:bg-[#feb913] px-2 w-52'
+						? 'bg-[#39bdf8] shadow-sm px-2 w-52'
+						: 'hover:hover:bg-[#39bdf8] px-2 w-52'
 				"
 			>
 				<img
@@ -25,7 +25,7 @@
 							: 'opacity-100 ml-2 w-auto'
 					"
 				>
-					<div class="text-base font-medium text-black leading-none">
+					<div class="text-base font-medium text-white leading-none">
 						<span
 							v-if="
 								branding.data?.app_name && branding.data?.app_name != 'Frappe'
@@ -37,7 +37,7 @@
 					</div>
 					<div
 						v-if="userResource.data"
-						class="mt-1 text-sm text-black leading-none"
+						class="mt-1 text-sm text-white leading-none"
 					>
 						{{ convertToTitleCase(userResource.data?.full_name) }}
 					</div>

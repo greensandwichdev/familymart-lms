@@ -53,7 +53,7 @@
 		window.show_language_picker = {{ show_language_picker or 'false' }};
 	</script>
 </head>
-<body style="background-image: url('/assets/lms/images/lms-login-bg.webp'); background-size: cover;" 
+<body style="background-image: url('/assets/lms/images/lms-login-bg.jpg'); background-size: cover;" 
 	frappe-session-status="{{ 'logged-in' if frappe.session.user != 'Guest' else 'logged-out'}}" data-path="{{ path | e }}" {%- if template and template.endswith('.md') %} frappe-content-type="markdown" {%- endif %} class="{{ body_class or ''}}">
 	{% include "public/icons/timeless/icons.svg" %}
 	{% include "public/icons/espresso/icons.svg" %}
