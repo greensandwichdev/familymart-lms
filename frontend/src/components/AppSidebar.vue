@@ -333,22 +333,6 @@ const addAssignments = () => {
 	}
 }
 
-const addProgrammingExercises = () => {
-	if (isInstructor.value || isModerator.value) {
-		sidebarLinks.value.splice(3, 0, {
-			label: 'Programming Exercises',
-			icon: 'Code',
-			to: 'ProgrammingExercises',
-			activeFor: [
-				'ProgrammingExercises',
-				'ProgrammingExerciseForm',
-				'ProgrammingExerciseSubmissions',
-				'ProgrammingExerciseSubmission',
-			],
-		})
-	}
-}
-
 const addPrograms = () => {
 	let activeFor = ['Programs', 'ProgramForm']
 	let canAddProgram = false
@@ -659,7 +643,6 @@ const setupSidebarForUser = () => {
 	addPrograms()
 	addQuizzes()
 	addAssignments()
-	// addProgrammingExercises()
 	// setUpOnboarding()
 }
 
