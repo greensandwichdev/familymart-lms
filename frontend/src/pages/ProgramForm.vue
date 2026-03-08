@@ -92,10 +92,58 @@
 					{{ __('Add') }}
 				</Button>
 			</div>
+		</div>
+
+		<!-- Members by Rank Section -->
+		<div class="mb-8">
+			<div class="flex items-center justify-between mb-2">
+				<div class="text-lg text-ink-gray-9 font-semibold">
+					{{ __('Members by Rank') }}
+				</div>
+			</div>
 
 			<ListView
-				:columns="memberColumns"
-				:rows="program.doc.program_members"
+				:columns="rankColumns"
+				:rows="rankSummary"
+				:row-key="(row) => row.rank"
+				:options="{
+					showTooltip: false,
+				}"
+			>
+				<ListHeader
+					class="mb-2 grid items-center space-x-4 rounded bg-surface-gray-2 p-2"
+				>
+					<ListHeaderItem :item="item" v-for="item in rankColumns" />
+				</ListHeader>
+				<ListRows>
+					<ListRow :row="row" v-for="row in rankSummary" />
+				</ListRows>
+				<ListSelectBanner>
+					<template #actions="{ unselectAll, selections }">
+						<div class="flex gap-2">
+							<Button
+								variant="ghost"
+								@click="removeByRank(selections, unselectAll)"
+							>
+								<Trash2 class="h-4 w-4 stroke-1.5" />
+							</Button>
+						</div>
+					</template>
+				</ListSelectBanner>
+			</ListView>
+		</div>
+
+		<!-- Members by Selection Section -->
+		<div>
+			<div class="flex items-center justify-between mb-2">
+				<div class="text-lg text-ink-gray-9 font-semibold">
+					{{ __('Members by Selection') }}
+				</div>
+			</div>
+
+			<ListView
+				:columns="memberDirectColumns"
+				:rows="membersByMember"
 				row-key="name"
 				:options="{
 					showTooltip: false,
@@ -104,17 +152,17 @@
 				<ListHeader
 					class="mb-2 grid items-center space-x-4 rounded bg-surface-gray-2 p-2"
 				>
-					<ListHeaderItem :item="item" v-for="item in memberColumns" />
+					<ListHeaderItem :item="item" v-for="item in memberDirectColumns" />
 				</ListHeader>
 				<ListRows>
-					<ListRow :row="row" v-for="row in program.doc.program_members" />
+					<ListRow :row="row" v-for="row in membersByMember" />
 				</ListRows>
 				<ListSelectBanner>
 					<template #actions="{ unselectAll, selections }">
 						<div class="flex gap-2">
 							<Button
 								variant="ghost"
-								@click="remove(selections, unselectAll, 'program_members')"
+								@click="removeByMember(selections, unselectAll)"
 							>
 								<Trash2 class="h-4 w-4 stroke-1.5" />
 							</Button>
@@ -160,13 +208,48 @@
 				"
 			/>
 
-			<Link
-				v-if="currentForm == 'member'"
-				v-model="member"
-				doctype="Crew Rank"
-				:label="__('Crew Rank')"
-				:onCreate="(value, close) => openSettings('Members', close)"
-			/>
+			<div v-if="currentForm == 'member'">
+				<div class="mb-4">
+					<label class="text-sm font-medium text-ink-gray-7 block mb-2">
+						{{ __('Enrollment Method') }}
+					</label>
+					<div class="flex gap-4">
+						<label class="flex items-center cursor-pointer">
+							<input
+								type="radio"
+								v-model="enrollmentType"
+								value="by_store_rank"
+								class="mr-2"
+							/>
+							<span class="text-sm">{{ __('By Store Rank') }}</span>
+						</label>
+						<label class="flex items-center cursor-pointer">
+							<input
+								type="radio"
+								v-model="enrollmentType"
+								value="by_member"
+								class="mr-2"
+							/>
+							<span class="text-sm">{{ __('By Member Selection') }}</span>
+						</label>
+					</div>
+				</div>
+
+				<Link
+					v-if="enrollmentType === 'by_store_rank'"
+					v-model="member"
+					doctype="Store Rank"
+					:label="__('Store Rank')"
+					:onCreate="(value, close) => openSettings('Members', close)"
+				/>
+
+				<MultiSelect
+					v-if="enrollmentType === 'by_member'"
+					v-model="selectedMembers"
+					doctype="User"
+					:label="__('Select Members')"
+				/>
+			</div>
 		</template>
 	</Dialog>
 </template>
@@ -194,12 +277,15 @@ import { sessionStore } from '@/stores/session'
 import { openSettings } from '@/utils'
 import Draggable from 'vuedraggable'
 import Link from '@/components/Controls/Link.vue'
+import MultiSelect from '@/components/Controls/MultiSelect.vue'
 
 const { brand } = sessionStore()
 const showDialog = ref(false)
 const currentForm = ref(null)
 const course = ref(null)
 const member = ref(null)
+const enrollmentType = ref('by_store_rank')
+const selectedMembers = ref([])
 const router = useRouter()
 
 const props = defineProps({
@@ -226,15 +312,15 @@ watch(
 		const missingRanks = [
 			...new Set(
 				members
-					.filter((m) => m.crew_rank && !rankCache.value[m.crew_rank])
-					.map((m) => m.crew_rank),
+					.filter((m) => m.store_rank && !rankCache.value[m.store_rank])
+					.map((m) => m.store_rank),
 			),
 		]
 
 		if (missingRanks.length) {
 			try {
 				const res = await call('frappe.client.get_list', {
-					doctype: 'Crew Rank',
+					doctype: 'Store Rank',
 					filters: [['name', 'in', missingRanks]],
 					fields: ['name', 'rank_name'],
 				})
@@ -248,13 +334,48 @@ watch(
 		}
 
 		members.forEach((m) => {
-			if (m.crew_rank) {
-				m.crew_rank_name = rankCache.value[m.crew_rank] || m.crew_rank
+			if (m.store_rank) {
+				m.store_rank_name = rankCache.value[m.store_rank] || m.store_rank
 			}
 		})
 	},
 	{ deep: true, immediate: true },
 )
+
+// Computed properties to separate members by enrollment type
+const membersByRank = computed(() => {
+	return (program.doc?.program_members || []).filter((m) => m.store_rank)
+})
+
+const membersByMember = computed(() => {
+	return (program.doc?.program_members || []).filter((m) => !m.store_rank)
+})
+
+const rankSummary = computed(() => {
+	const ranks = {}
+	membersByRank.value.forEach((m) => {
+		if (!ranks[m.store_rank]) {
+			ranks[m.store_rank] = {
+				rank: m.store_rank,
+				rank_name: m.store_rank_name,
+				count: 0,
+			}
+		}
+		ranks[m.store_rank].count++
+	})
+	return Object.values(ranks)
+})
+
+const rankColumns = [
+	{ label: 'Store Rank', key: 'rank_name', width: '60%' },
+	{ label: 'Members', key: 'count', width: '40%' },
+]
+
+const memberDirectColumns = [
+	{ label: 'Full Name', key: 'full_name', width: '40%' },
+	{ label: 'Email', key: 'email', width: '40%' },
+	{ label: 'Progress (%)', key: 'progress', width: '20%' },
+]
 
 const addProgramCourse = () => {
 	program.setValue.submit(
@@ -280,23 +401,66 @@ const addProgramCourse = () => {
 
 const addProgramMember = async () => {
 	try {
-		const member_list = await call('lms.lms.api.get_users_by_ranks', {
-			rank: member.value,
-		})
+		let memberList = []
 
-		if (!member_list.length) {
-			toast.error(__('No users found for this rank'))
+		if (enrollmentType.value === 'by_store_rank') {
+			// Method 1: By Store Rank
+			if (!member.value) {
+				toast.error(__('Please select a Store Rank'))
+				return
+			}
+			memberList = await call('lms.lms.api.get_users_by_ranks', {
+				rank: member.value,
+			})
+
+			if (!memberList.length) {
+				toast.error(__('No users found for this rank'))
+				return
+			}
+
+			// Add users with store_rank
+			memberList = memberList.map((u) => ({
+				member: u.name,
+				store_rank: member.value,
+				full_name: u.full_name,
+			}))
+		} else {
+			// Method 2: By Member Selection
+			if (!selectedMembers.value || selectedMembers.value.length === 0) {
+				toast.error(__('Please select at least one member'))
+				return
+			}
+
+			// Fetch user details for each selected user
+			for (const userName of selectedMembers.value) {
+				try {
+					const userDetails = await call('frappe.client.get', {
+						doctype: 'User',
+						name: userName,
+					})
+					memberList.push({
+						member: userName,
+						store_rank: null,
+						full_name: userDetails.full_name,
+						email: userDetails.email,
+					})
+				} catch (err) {
+					console.error('Failed to fetch user details for:', userName, err)
+				}
+			}
+		}
+
+		// Filter out duplicates
+		const existingMembers = program.doc.program_members || []
+		const existingMemberNames = new Set(existingMembers.map((m) => m.member))
+		const newMembers = memberList.filter((m) => !existingMemberNames.has(m.member))
+
+		if (newMembers.length === 0) {
+			toast.error(__('All selected members are already in the program'))
 			return
 		}
 
-		const updatedMembers = [
-			...program.doc.program_members,
-			...member_list.map((u) => ({
-				member: u.name,
-				crew_rank: u.crew_rank,
-				full_name: u.full_name,
-			})),
-		]
+		const updatedMembers = [...existingMembers, ...newMembers]
 
 		program.setValue.submit(
 			{
@@ -306,6 +470,8 @@ const addProgramMember = async () => {
 				onSuccess(data) {
 					showDialog.value = false
 					member.value = null
+					selectedMembers.value = []
+					enrollmentType.value = 'by_store_rank'
 					toast.success(__('Member(s) added to program'))
 					program.reload()
 				},
@@ -316,7 +482,7 @@ const addProgramMember = async () => {
 		)
 	} catch (err) {
 		console.error(err)
-		toast.error(__('Failed to fetch members'))
+		toast.error(__('Failed to add members'))
 	}
 }
 
@@ -332,6 +498,56 @@ const remove = (selections, unselectAll, doctype) => {
 			onSuccess(data) {
 				unselectAll()
 				toast.success(__('Items removed successfully'))
+				program.reload()
+			},
+			onError(err) {
+				toast.error(err.messages?.[0] || err)
+			},
+		},
+	)
+}
+
+const removeByRank = (selections, unselectAll) => {
+	selections = Array.from(selections)
+	const ranksToRemove = selections.map((r) => r.rank)
+	
+	const updatedMembers = (program.doc.program_members || []).filter(
+		(row) => !ranksToRemove.includes(row.store_rank),
+	)
+	
+	program.setValue.submit(
+		{
+			program_members: updatedMembers,
+		},
+		{
+			onSuccess(data) {
+				unselectAll()
+				toast.success(__('Members removed successfully'))
+				program.reload()
+			},
+			onError(err) {
+				toast.error(err.messages?.[0] || err)
+			},
+		},
+	)
+}
+
+const removeByMember = (selections, unselectAll) => {
+	selections = Array.from(selections)
+	const membersToRemove = new Set(selections.map((r) => r.name))
+	
+	const updatedMembers = (program.doc.program_members || []).filter(
+		(row) => !membersToRemove.has(row.name),
+	)
+	
+	program.setValue.submit(
+		{
+			program_members: updatedMembers,
+		},
+		{
+			onSuccess(data) {
+				unselectAll()
+				toast.success(__('Members removed successfully'))
 				program.reload()
 			},
 			onError(err) {
@@ -401,8 +617,8 @@ const memberColumns = computed(() => {
 			align: 'left',
 		},
 		{
-			label: 'Crew Rank',
-			key: 'crew_rank_name',
+			label: 'Store Rank',
+			key: 'store_rank_name',
 			width: 3,
 			align: 'left',
 		},

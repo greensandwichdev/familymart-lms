@@ -56,7 +56,7 @@
 									{{ member.name }}
 								</div>
 								<div class="text-sm text-ink-gray-7">
-									{{ member.crew_rank_name }}
+									{{ member.store_rank_name }}
 								</div>
 							</div>
 						</div>
@@ -121,9 +121,17 @@
 			<div class="flex items-center pt-5">
 				<Link
 					class="w-full"
-					v-model="member.crew_rank"
-					doctype="Crew Rank"
-					:label="__('Crew Rank')"
+					v-model="member.store_rank"
+					doctype="Store Rank"
+					:label="__('Store Rank')"
+				/>
+			</div>
+			<div class="flex items-center pt-5">
+				<Link
+					class="w-full"
+					v-model="member.lms_store"
+					doctype="LMS Store"
+					:label="__('Store')"
 				/>
 			</div>
 		</template>
@@ -151,7 +159,8 @@ type Member = {
 	name: string
 	role?: string
 	user_image?: string
-	crew_rank_name?: string
+	store_rank_name?: string
+	lms_store_name?: string
 }
 
 const router = useRouter()
@@ -168,7 +177,8 @@ const { updateOnboardingStep } = useOnboarding('learning')
 const member = reactive({
 	email: '',
 	first_name: '',
-	crew_rank: '',
+	store_rank: '',
+	lms_store: '',
 })
 
 const props = defineProps({
@@ -219,7 +229,8 @@ const newMember = createResource({
 				doctype: 'User',
 				first_name: member.first_name,
 				email: member.email,
-				crew_rank: member.crew_rank,
+				store_rank: member.store_rank,
+				lms_store: member.lms_store,
 			},
 		}
 	},
@@ -230,7 +241,8 @@ const newMember = createResource({
 		// Reset field form
 		member.email = ''
 		member.first_name = ''
-		member.crew_rank = ''
+		member.store_rank = ''
+		member.lms_store = ''
 
 		// Reset daftar member & reload ulang
 		memberList.value = []

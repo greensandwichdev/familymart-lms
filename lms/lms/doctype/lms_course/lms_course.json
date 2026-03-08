@@ -48,8 +48,9 @@
   "course_price",
   "currency",
   "amount_usd",
-  "tab_4_tab",
-  "statistics_section",
+   "tab_4_tab",
+   "grades",
+   "statistics_section",
   "enrollments",
   "lessons",
   "rating"
@@ -230,15 +231,21 @@
    "label": "Category",
    "options": "LMS Category"
   },
-  {
-   "fieldname": "tab_4_tab",
-   "fieldtype": "Tab Break",
-   "label": "Statistics"
-  },
-  {
-   "fieldname": "statistics_section",
-   "fieldtype": "Section Break"
-  },
+   {
+    "fieldname": "tab_4_tab",
+    "fieldtype": "Tab Break",
+    "label": "Grades"
+   },
+   {
+    "fieldname": "grades",
+    "fieldtype": "Table",
+    "label": "Grades",
+    "options": "Course Grade"
+   },
+   {
+    "fieldname": "statistics_section",
+    "fieldtype": "Section Break"
+   },
   {
    "default": "0",
    "fieldname": "enrollments",

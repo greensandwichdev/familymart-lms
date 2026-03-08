@@ -45,13 +45,6 @@
 								: {}),
 						}"
 					/>
-					<PaymentSettings
-						v-else-if="activeTab.label === 'Payment Gateway'"
-						:label="activeTab.label"
-						:description="activeTab.description"
-						:data="data"
-						:fields="activeTab.fields"
-					/>
 					<SettingDetails
 						v-else
 						:fields="activeTab.fields"
@@ -75,9 +68,9 @@ import Evaluators from '@/components/Settings/Evaluators.vue'
 import Categories from '@/components/Settings/Categories.vue'
 import EmailTemplates from '@/components/Settings/EmailTemplates.vue'
 import BrandSettings from '@/components/Settings/BrandSettings.vue'
-import PaymentSettings from '@/components/Settings/PaymentSettings.vue'
 import ZoomSettings from '@/components/Settings/ZoomSettings.vue'
 import Badges from '@/components/Settings/Badges.vue'
+import Stores from '@/components/Settings/Stores.vue'
 
 const show = defineModel()
 const doctype = ref('LMS Settings')
@@ -165,50 +158,6 @@ const tabsStructure = computed(() => {
 			],
 		},
 		{
-			label: 'Settings',
-			hideLabel: true,
-			items: [
-				{
-					label: 'Payment Gateway',
-					icon: 'DollarSign',
-					description:
-						'Configure the payment gateway and other payment related settings',
-					fields: [
-						{
-							label: 'Default Currency',
-							name: 'default_currency',
-							type: 'Link',
-							doctype: 'Currency',
-						},
-						{
-							label: 'Payment Gateway',
-							name: 'payment_gateway',
-							type: 'Link',
-							doctype: 'Payment Gateway',
-						},
-						{
-							type: 'Column Break',
-						},
-						{
-							label: 'Apply GST for India',
-							name: 'apply_gst',
-							type: 'checkbox',
-						},
-						{
-							label: 'Show USD equivalent amount',
-							name: 'show_usd_equivalent',
-							type: 'checkbox',
-						},
-						{
-							label: 'Apply rounding on equivalent',
-							name: 'apply_rounding',
-							type: 'checkbox',
-						},
-					],
-				},
-			],
-		},
-		{
 			label: 'Lists',
 			hideLabel: false,
 			items: [
@@ -252,6 +201,19 @@ const tabsStructure = computed(() => {
 					description: 'Manage the email templates for your learning system',
 					icon: 'MailPlus',
 					template: markRaw(EmailTemplates),
+				},
+			],
+		},
+		{
+			label: 'Stores',
+			hideLabel: false,
+			items: [
+				{
+					label: 'Stores',
+					description:
+						'Manage stores and assign members to stores with their ranks',
+					icon: 'Store',
+					template: markRaw(Stores),
 				},
 			],
 		},

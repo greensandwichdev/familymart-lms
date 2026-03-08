@@ -7,7 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "member",
-  "crew_rank",
+  "store_rank",
   "full_name",
   "progress"
  ],
@@ -36,12 +36,12 @@
    "label": "Progress"
   },
   {
-   "fieldname": "crew_rank",
+   "fieldname": "store_rank",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Crew Rank",
-   "options": "Crew Rank",
-   "reqd": 1
+   "label": "Store Rank",
+   "options": "Store Rank",
+   "reqd": 0
   }
  ],
  "index_web_pages_for_search": 1,

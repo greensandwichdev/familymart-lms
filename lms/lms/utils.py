@@ -972,9 +972,46 @@ def get_courses(filters=None, start=0):
 	if show_featured:
 		courses = get_featured_courses(filters, or_filters, fields) + courses
 
+	courses = filter_courses_by_rank(courses)
+
 	courses = get_enrollment_details(courses)
 	courses = get_course_card_details(courses)
 	return courses
+
+
+def filter_courses_by_rank(courses):
+	"""Filter courses based on user's store rank.
+
+	Only return courses where:
+	- The course has no grades (visible to all), OR
+	- The user's store_rank is in the course's grades
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		return courses
+
+	user_rank = frappe.db.get_value("User", user, "store_rank")
+
+	if not user_rank:
+		return courses
+
+	filtered_courses = []
+	for course in courses:
+		grades = frappe.get_all(
+			"Course Grade",
+			filters={"parent": course.name},
+			fields=["store_rank"],
+		)
+
+		if not grades:
+			filtered_courses.append(course)
+			continue
+
+		grade_ranks = [g.store_rank for g in grades]
+		if user_rank in grade_ranks:
+			filtered_courses.append(course)
+
+	return filtered_courses
 
 
 def get_course_card_details(courses):
