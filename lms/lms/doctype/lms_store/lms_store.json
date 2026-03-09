@@ -4,13 +4,17 @@
  "creation": "2026-03-08 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "store_name",
-  "store_code",
-  "organization",
-  "address",
-  "is_active"
- ],
+"field_order": [
+   "store_name",
+   "store_code",
+   "organization",
+   "address",
+   "is_active",
+   "region_section",
+   "province",
+   "regency",
+   "district"
+  ],
  "fields": [
   {
    "fieldname": "store_name",
@@ -42,15 +46,42 @@
    "fieldtype": "Small Text",
    "label": "Address"
   },
-  {
+{
    "fieldname": "is_active",
    "fieldtype": "Check",
    "default": "1",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Is Active"
-  }
- ],
+   },
+   {
+   "fieldname": "region_section",
+   "fieldtype": "Section Break",
+   "label": "Region"
+   },
+   {
+   "fieldname": "province",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Province",
+   "options": "Province"
+   },
+   {
+   "fieldname": "regency",
+   "fieldtype": "Link",
+   "depends_on": "eval:doc.province",
+   "label": "Regency",
+   "options": "Regency"
+   },
+   {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "depends_on": "eval:doc.regency",
+   "label": "District",
+   "options": "District"
+   }
+  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],

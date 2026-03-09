@@ -330,6 +330,9 @@ def get_members(start=0, search=""):
 			"last_active",
 			"store_rank",
 			"lms_store",
+			"province",
+			"regency",
+			"district",
 		],
 		or_filters=or_filters,
 		page_length=20,
@@ -343,6 +346,16 @@ def get_members(start=0, search=""):
 	for member in members:
 		member["store_rank_name"] = rank_map.get(member.store_rank, None)
 		member["lms_store_name"] = store_map.get(member.lms_store, None)
+
+		# Build region display string
+		region_parts = []
+		if member.get("district"):
+			region_parts.append(member["district"])
+		if member.get("regency"):
+			region_parts.append(member["regency"])
+		if member.get("province"):
+			region_parts.append(member["province"])
+		member["region_display"] = ", ".join(region_parts) if region_parts else "-"
 
 		roles = frappe.get_all(
 			"Has Role",
@@ -391,17 +404,35 @@ def get_rank_list():
 
 
 @frappe.whitelist()
-def get_users_by_ranks(rank):
-	"""Returns users with a specific store rank."""
+def get_users_by_ranks(rank, province=None, regency=None, district=None):
+	"""Returns users with a specific store rank and optional region filters."""
+	filters = {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]}
+
+	if rank:
+		filters["store_rank"] = rank
+
+	if any([province, regency, district]):
+		store_filters = {"is_active": 1}
+		if province:
+			store_filters["province"] = province
+		if regency:
+			store_filters["regency"] = regency
+		if district:
+			store_filters["district"] = district
+
+		stores = frappe.get_all("LMS Store", store_filters, pluck="name")
+
+		if stores:
+			filters["lms_store"] = ["in", stores]
+		else:
+			return []
+
 	users = frappe.get_all(
 		"User",
-		{
-			"enabled": 1,
-			"name": ["not in", ["Administrator", "Guest"]],
-			"store_rank": rank,
-		},
-		["name", "full_name", "user_image", "username", "store_rank"],
+		filters=filters,
+		fields=["name", "full_name", "user_image", "username", "store_rank"],
 	)
+
 	return users
 
 

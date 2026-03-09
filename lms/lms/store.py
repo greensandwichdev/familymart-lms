@@ -9,7 +9,16 @@ def get_stores():
 	stores = frappe.get_all(
 		"LMS Store",
 		filters={"is_active": 1},
-		fields=["name", "store_name", "store_code", "organization", "address"],
+		fields=[
+			"name",
+			"store_name",
+			"store_code",
+			"organization",
+			"address",
+			"province",
+			"regency",
+			"district",
+		],
 		order_by="store_name",
 	)
 	return stores
@@ -137,3 +146,40 @@ def get_user_store_info():
 		"has_store": bool(user_doc.lms_store),
 		"has_rank": bool(user_doc.store_rank),
 	}
+
+
+@frappe.whitelist()
+def get_provinces():
+	"""Returns the list of all provinces."""
+	provinces = frappe.get_all("Province", order_by="name")
+	return provinces
+
+
+@frappe.whitelist()
+def get_regencies(province=None):
+	"""Returns the list of regencies in a province."""
+	province = province or frappe.form_dict.get("province")
+	if not province:
+		return []
+
+	regencies = frappe.get_all(
+		"Regency",
+		filters={"province": province},
+		order_by="name",
+	)
+	return regencies
+
+
+@frappe.whitelist()
+def get_districts(regency=None):
+	"""Returns the list of districts in a regency."""
+	regency = regency or frappe.form_dict.get("regency")
+	if not regency:
+		return []
+
+	districts = frappe.get_all(
+		"District",
+		filters={"regency": regency},
+		order_by="name",
+	)
+	return districts

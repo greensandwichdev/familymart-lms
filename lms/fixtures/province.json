@@ -1,0 +1,192 @@
+[
+  {
+    "name": "Aceh",
+    "code": "11",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sumatera Utara",
+    "code": "12",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sumatera Barat",
+    "code": "13",
+    "doctype": "Province"
+  },
+  {
+    "name": "Riau",
+    "code": "14",
+    "doctype": "Province"
+  },
+  {
+    "name": "Jambi",
+    "code": "15",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sumatera Selatan",
+    "code": "16",
+    "doctype": "Province"
+  },
+  {
+    "name": "Bengkulu",
+    "code": "17",
+    "doctype": "Province"
+  },
+  {
+    "name": "Lampung",
+    "code": "18",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kepulauan Bangka Belitung",
+    "code": "19",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kepulauan Riau",
+    "code": "21",
+    "doctype": "Province"
+  },
+  {
+    "name": "Daerah Khusus Ibukota Jakarta",
+    "code": "31",
+    "doctype": "Province"
+  },
+  {
+    "name": "Jawa Barat",
+    "code": "32",
+    "doctype": "Province"
+  },
+  {
+    "name": "Jawa Tengah",
+    "code": "33",
+    "doctype": "Province"
+  },
+  {
+    "name": "Daerah Istimewa Yogyakarta",
+    "code": "34",
+    "doctype": "Province"
+  },
+  {
+    "name": "Jawa Timur",
+    "code": "35",
+    "doctype": "Province"
+  },
+  {
+    "name": "Banten",
+    "code": "36",
+    "doctype": "Province"
+  },
+  {
+    "name": "Bali",
+    "code": "51",
+    "doctype": "Province"
+  },
+  {
+    "name": "Nusa Tenggara Barat",
+    "code": "52",
+    "doctype": "Province"
+  },
+  {
+    "name": "Nusa Tenggara Timur",
+    "code": "53",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kalimantan Barat",
+    "code": "61",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kalimantan Tengah",
+    "code": "62",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kalimantan Selatan",
+    "code": "63",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kalimantan Timur",
+    "code": "64",
+    "doctype": "Province"
+  },
+  {
+    "name": "Kalimantan Utara",
+    "code": "65",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sulawesi Utara",
+    "code": "71",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sulawesi Tengah",
+    "code": "72",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sulawesi Selatan",
+    "code": "73",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sulawesi Tenggara",
+    "code": "74",
+    "doctype": "Province"
+  },
+  {
+    "name": "Gorontalo",
+    "code": "75",
+    "doctype": "Province"
+  },
+  {
+    "name": "Sulawesi Barat",
+    "code": "76",
+    "doctype": "Province"
+  },
+  {
+    "name": "Maluku",
+    "code": "81",
+    "doctype": "Province"
+  },
+  {
+    "name": "Maluku Utara",
+    "code": "82",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua",
+    "code": "91",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua Barat",
+    "code": "92",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua Selatan",
+    "code": "93",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua Tengah",
+    "code": "94",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua Pegunungan",
+    "code": "95",
+    "doctype": "Province"
+  },
+  {
+    "name": "Papua Barat Daya",
+    "code": "96",
+    "doctype": "Province"
+  }
+]

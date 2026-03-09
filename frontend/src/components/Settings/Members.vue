@@ -58,6 +58,9 @@
 								<div class="text-sm text-ink-gray-7">
 									{{ member.store_rank_name }}
 								</div>
+								<div v-if="member.region_display && member.region_display !== '-'" class="text-sm text-ink-gray-7">
+									{{ member.region_display }}
+								</div>
 							</div>
 						</div>
 						<div

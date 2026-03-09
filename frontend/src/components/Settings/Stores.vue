@@ -12,17 +12,47 @@
 		</div>
 
 		<div class="mt-8 pb-10">
-			<FormControl
-				v-model="search"
-				:placeholder="__('Search')"
-				type="text"
-				:debounce="300"
-				class="w-1/4 mb-4"
-			>
-				<template #prefix>
-					<Search class="size-4 stroke-1.5 text-ink-gray-5" />
-				</template>
-			</FormControl>
+			<div class="flex gap-4 mb-4">
+				<FormControl
+					v-model="search"
+					:placeholder="__('Search')"
+					type="text"
+					:debounce="300"
+					class="w-1/4"
+				>
+					<template #prefix>
+						<Search class="size-4 stroke-1.5 text-ink-gray-5" />
+					</template>
+				</FormControl>
+				<FormControl
+					v-model="filters.province"
+					:label="__('Province')"
+					type="select"
+					:options="provinceOptions"
+					placeholder="All Provinces"
+					class="w-1/4"
+					@change="onProvinceChange"
+				/>
+				<FormControl
+					v-model="filters.regency"
+					:label="__('Regency')"
+					type="select"
+					:options="regencyOptions"
+					placeholder="All Regencies"
+					class="w-1/4"
+					:disabled="!filters.province"
+					@change="onRegencyChange"
+				/>
+				<FormControl
+					v-model="filters.district"
+					:label="__('District')"
+					type="select"
+					:options="districtOptions"
+					placeholder="All Districts"
+					class="w-1/4"
+					:disabled="!filters.regency"
+				/>
+			</div>
 			<div class="overflow-y-scroll h-[60vh]">
 				<ul class="divide-y py-5">
 					<li
@@ -175,6 +205,12 @@ const showAddMemberForm = ref(false)
 const editingMember = ref(null)
 const selectedStore = ref(null)
 
+const filters = ref({
+	province: '',
+	regency: '',
+	district: '',
+})
+
 const memberForm = ref({
 	user: '',
 	rank: '',
@@ -183,6 +219,27 @@ const memberForm = ref({
 const stores = createResource({
 	url: 'lms.lms.store.get_stores',
 	auto: true,
+	transform(data) {
+		return data.map(store => ({
+			...store,
+			province: store.province || '',
+			regency: store.regency || '',
+			district: store.district || '',
+		}))
+	},
+})
+
+const provinces = createResource({
+	url: 'lms.lms.store.get_provinces',
+	auto: true,
+})
+
+const getRegencies = createResource({
+	url: 'lms.lms.store.get_regencies',
+})
+
+const getDistricts = createResource({
+	url: 'lms.lms.store.get_districts',
 })
 
 const ranks = createResource({
@@ -228,8 +285,68 @@ const storeMembers = ref([])
 
 const storeList = computed(() => {
 	if (!stores.data) return []
-	return stores.data
+	let result = stores.data
+
+	if (search.value) {
+		const searchLower = search.value.toLowerCase()
+		result = result.filter(
+			store =>
+				store.store_name.toLowerCase().includes(searchLower) ||
+				store.store_code.toLowerCase().includes(searchLower) ||
+				(store.organization && store.organization.toLowerCase().includes(searchLower))
+		)
+	}
+
+	if (filters.value.province) {
+		result = result.filter(store => store.province === filters.value.province)
+	}
+	if (filters.value.regency) {
+		result = result.filter(store => store.regency === filters.value.regency)
+	}
+	if (filters.value.district) {
+		result = result.filter(store => store.district === filters.value.district)
+	}
+
+	return result
 })
+
+const provinceOptions = computed(() => {
+	if (!provinces.data) return []
+	return [{ label: 'All Provinces', value: '' }, ...provinces.data.map(p => ({ label: p.name, value: p.name }))]
+})
+
+const regencyOptions = ref([])
+
+const districtOptions = ref([])
+
+const onProvinceChange = async () => {
+	filters.value.regency = ''
+	filters.value.district = ''
+	if (filters.value.province) {
+		console.log('Fetching regencies for province:', filters.value.province)
+		try {
+			const regencies = await getRegencies.submit({ province: filters.value.province })
+			console.log('Regencies response:', regencies)
+			regencyOptions.value = [{ label: 'All Regencies', value: '' }, ...regencies.map(r => ({ label: r.name, value: r.name }))]
+		} catch (e) {
+			console.error('Error fetching regencies:', e)
+		}
+	}
+}
+
+const onRegencyChange = async () => {
+	filters.value.district = ''
+	if (filters.value.regency) {
+		console.log('Fetching districts for regency:', filters.value.regency)
+		try {
+			const districts = await getDistricts.submit({ regency: filters.value.regency })
+			console.log('Districts response:', districts)
+			districtOptions.value = [{ label: 'All Districts', value: '' }, ...districts.map(d => ({ label: d.name, value: d.name }))]
+		} catch (e) {
+			console.error('Error fetching districts:', e)
+		}
+	}
+}
 
 const rankOptions = computed(() => {
 	if (!ranks.data) return []

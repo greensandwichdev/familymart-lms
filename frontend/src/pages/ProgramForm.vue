@@ -243,6 +243,34 @@
 					:onCreate="(value, close) => openSettings('Members', close)"
 				/>
 
+				<div v-if="enrollmentType === 'by_store_rank'" class="space-y-4 mt-4">
+					<FormControl
+						v-model="regionFilters.province"
+						:label="__('Province')"
+						type="select"
+						:options="provinceOptions"
+						placeholder="All Provinces"
+						@change="onProvinceChange"
+					/>
+					<FormControl
+						v-model="regionFilters.regency"
+						:label="__('Regency')"
+						type="select"
+						:options="regencyOptions"
+						placeholder="All Regencies"
+						:disabled="!regionFilters.province"
+						@change="onRegencyChange"
+					/>
+					<FormControl
+						v-model="regionFilters.district"
+						:label="__('District')"
+						type="select"
+						:options="districtOptions"
+						placeholder="All Districts"
+						:disabled="!regionFilters.regency"
+					/>
+				</div>
+
 				<MultiSelect
 					v-if="enrollmentType === 'by_member'"
 					v-model="selectedMembers"
@@ -288,12 +316,49 @@ const enrollmentType = ref('by_store_rank')
 const selectedMembers = ref([])
 const router = useRouter()
 
+const regionFilters = ref({
+	province: '',
+	regency: '',
+	district: '',
+})
+
+const provinceOptions = ref([])
+const regencyOptions = ref([])
+const districtOptions = ref([])
+
 const props = defineProps({
 	programName: {
 		type: String,
 		required: true,
 	},
 })
+
+// Fetch provinces on mount
+call('lms.lms.store.get_provinces').then((data) => {
+	provinceOptions.value = [{ label: 'All Provinces', value: '' }, ...data.map(p => ({ label: p.name, value: p.name }))]
+})
+
+const onProvinceChange = async () => {
+	regionFilters.value.regency = ''
+	regionFilters.value.district = ''
+	regencyOptions.value = []
+	districtOptions.value = []
+	
+	if (regionFilters.value.province) {
+		const data = await call('lms.lms.store.get_regencies', { province: regionFilters.value.province })
+		regencyOptions.value = [{ label: 'All Regencies', value: '' }, ...data.map(r => ({ label: r.name, value: r.name }))]
+	}
+}
+
+const onRegencyChange = async () => {
+	regionFilters.value.district = ''
+	districtOptions.value = []
+	
+	if (regionFilters.value.regency) {
+		const data = await call('lms.lms.store.get_districts', { regency: regionFilters.value.regency })
+		districtOptions.value = [{ label: 'All Districts', value: '' }, ...data.map(d => ({ label: d.name, value: d.name }))]
+	}
+}
 
 const rankCache = ref({})
 
@@ -409,9 +474,23 @@ const addProgramMember = async () => {
 				toast.error(__('Please select a Store Rank'))
 				return
 			}
-			memberList = await call('lms.lms.api.get_users_by_ranks', {
+			
+			const apiParams = {
 				rank: member.value,
-			})
+			}
+			
+			// Add region filters if selected
+			if (regionFilters.value.province) {
+				apiParams.province = regionFilters.value.province
+			}
+			if (regionFilters.value.regency) {
+				apiParams.regency = regionFilters.value.regency
+			}
+			if (regionFilters.value.district) {
+				apiParams.district = regionFilters.value.district
+			}
+			
+			memberList = await call('lms.lms.api.get_users_by_ranks', apiParams)
 
 			if (!memberList.length) {
 				toast.error(__('No users found for this rank'))
@@ -472,6 +551,9 @@ const addProgramMember = async () => {
 					member.value = null
 					selectedMembers.value = []
 					enrollmentType.value = 'by_store_rank'
+					regionFilters.value = { province: '', regency: '', district: '' }
+					regencyOptions.value = []
+					districtOptions.value = []
 					toast.success(__('Member(s) added to program'))
 					program.reload()
 				},
