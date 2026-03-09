@@ -4,7 +4,6 @@ import re
 import string
 
 import frappe
-import razorpay
 import requests
 from frappe import _
 from frappe.desk.doctype.dashboard_chart.dashboard_chart import get_result
@@ -1872,9 +1871,7 @@ def update_payment_record(doctype, docname):
 		data = frappe._dict(json.loads(data))
 
 		payment_gateway = data.get("payment_gateway")
-		if payment_gateway == "Razorpay":
-			payment_id = "razorpay_payment_id"
-		elif "Stripe" in payment_gateway:
+		if "Stripe" in payment_gateway:
 			payment_id = "stripe_token_id"
 		else:
 			payment_id = "order_id"

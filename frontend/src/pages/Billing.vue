@@ -158,22 +158,13 @@ import {
 	usePageMeta,
 	toast,
 } from 'frappe-ui'
-import { reactive, inject, onMounted, computed } from 'vue'
+import { reactive, inject, computed } from 'vue'
 import { sessionStore } from '../stores/session'
 import Link from '@/components/Controls/Link.vue'
 import NotPermitted from '@/components/NotPermitted.vue'
 
 const user = inject('$user')
 const { brand } = sessionStore()
-
-onMounted(() => {
-	const script = document.createElement('script')
-	script.src = `https://checkout.razorpay.com/v1/checkout.js`
-	document.body.appendChild(script)
-	if (user.data?.name) {
-		access.submit()
-	}
-})
 
 const props = defineProps({
 	type: {
