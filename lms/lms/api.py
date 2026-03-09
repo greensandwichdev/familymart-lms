@@ -1341,3 +1341,374 @@ def get_progress_distribution(progressList):
 	]
 
 	return distribution
+
+
+@frappe.whitelist(allow_guest=True)
+def get_chart_details():
+	details = frappe._dict()
+	details.enrollments = frappe.db.count("LMS Enrollment")
+	details.courses = frappe.db.count(
+		"LMS Course",
+		{
+			"published": 1,
+			"upcoming": 0,
+		},
+	)
+	details.users = frappe.db.count("User", {"enabled": 1, "name": ["not in", ("Administrator", "Guest")]})
+	details.completions = frappe.db.count("LMS Enrollment", {"progress": ["like", "%100%"]})
+	details.certifications = frappe.db.count("LMS Certificate", {"published": 1})
+	return details
+
+
+@frappe.whitelist()
+def get_file_info(file_url):
+	"""Get file info for the given file URL."""
+	file_info = frappe.db.get_value(
+		"File", {"file_url": file_url}, ["file_name", "file_size", "file_url"], as_dict=1
+	)
+	return file_info
+
+
+@frappe.whitelist(allow_guest=True)
+def get_branding():
+	"""Get branding details."""
+	website_settings = frappe.get_single("Website Settings")
+	image_fields = ["banner_image", "footer_logo", "favicon"]
+
+	for field in image_fields:
+		if website_settings.get(field):
+			file_info = get_file_info(website_settings.get(field))
+			website_settings.update({field: json.loads(json.dumps(file_info))})
+		else:
+			website_settings.update({field: None})
+
+	return website_settings
+
+
+@frappe.whitelist()
+def get_unsplash_photos(keyword=None):
+	from lms.unsplash import get_by_keyword, get_list
+
+	if keyword:
+		return get_by_keyword(keyword)
+
+	return frappe.cache().get_value("unsplash_photos", generator=get_list)
+
+
+@frappe.whitelist()
+def get_evaluator_details(evaluator):
+	frappe.only_for("Batch Evaluator")
+
+	if not frappe.db.exists("Google Calendar", {"user": evaluator}):
+		calendar = frappe.new_doc("Google Calendar")
+		calendar.update({"user": evaluator, "calendar_name": evaluator})
+		calendar.insert()
+	else:
+		calendar = frappe.db.get_value(
+			"Google Calendar", {"user": evaluator}, ["name", "authorization_code"], as_dict=1
+		)
+
+	if frappe.db.exists("Course Evaluator", {"evaluator": evaluator}):
+		doc = frappe.get_doc("Course Evaluator", evaluator)
+	else:
+		doc = frappe.new_doc("Course Evaluator")
+		doc.evaluator = evaluator
+		doc.insert()
+
+	return {
+		"slots": doc.as_dict(),
+		"calendar": calendar.name,
+		"is_authorised": calendar.authorization_code,
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_certified_participants(filters=None, start=0, page_length=100):
+	or_filters = {}
+	if not filters:
+		filters = {}
+
+	filters.update({"published": 1})
+
+	category = filters.get("category")
+	if category:
+		del filters["category"]
+		or_filters["course_title"] = ["like", f"%{category}%"]
+		or_filters["batch_title"] = ["like", f"%{category}%"]
+
+	participants = frappe.db.get_all(
+		"LMS Certificate",
+		filters=filters,
+		or_filters=or_filters,
+		fields=["member", "issue_date"],
+		group_by="member",
+		order_by="issue_date desc",
+		start=start,
+		page_length=page_length,
+	)
+
+	for participant in participants:
+		count = frappe.db.count("LMS Certificate", {"member": participant.member})
+		details = frappe.db.get_value(
+			"User",
+			participant.member,
+			["full_name", "user_image", "username", "country", "headline"],
+			as_dict=1,
+		)
+		details["certificate_count"] = count
+		participant.update(details)
+
+	return participants
+
+
+@frappe.whitelist(allow_guest=True)
+def get_count_of_certified_members(filters=None):
+	Certificate = DocType("LMS Certificate")
+
+	query = (
+		frappe.qb.from_(Certificate).select(Certificate.member).distinct().where(Certificate.published == 1)
+	)
+
+	if filters:
+		for field, value in filters.items():
+			if field == "category":
+				query = query.where(
+					Certificate.course_title.like(f"%{value}%") | Certificate.batch_title.like(f"%{value}%")
+				)
+			elif field == "member_name":
+				query = query.where(Certificate.member_name.like(value[1]))
+
+	result = query.run(as_dict=True)
+	return len(result) or 0
+
+
+@frappe.whitelist(allow_guest=True)
+def get_certification_categories():
+	categories = []
+	docs = frappe.get_all(
+		"LMS Certificate",
+		filters={
+			"published": 1,
+		},
+		fields=["course_title", "batch_title"],
+	)
+
+	for doc in docs:
+		category = doc.course_title if doc.course_title else doc.batch_title
+		if category not in categories:
+			categories.append(category)
+
+	return categories
+
+
+@frappe.whitelist()
+def get_assigned_badges(member):
+	assigned_badges = frappe.get_all(
+		"LMS Badge Assignment",
+		{"member": member},
+		["badge"],
+		as_dict=1,
+	)
+
+	for badge in assigned_badges:
+		badge.update(frappe.db.get_value("LMS Badge", badge.badge, ["name", "title", "image"]))
+	return assigned_badges
+
+
+@frappe.whitelist()
+def get_all_users():
+	frappe.only_for(["Moderator", "Course Creator", "Batch Evaluator"])
+	users = frappe.get_all(
+		"User",
+		{
+			"enabled": 1,
+		},
+		["name", "full_name", "user_image"],
+	)
+
+	return {user.name: user for user in users}
+
+
+@frappe.whitelist()
+def mark_as_read(name):
+	doc = frappe.get_doc("Notification Log", name)
+	doc.read = 1
+	doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def mark_all_as_read():
+	notifications = frappe.get_all(
+		"Notification Log", {"for_user": frappe.session.user, "read": 0}, pluck="name"
+	)
+
+	for notification in notifications:
+		mark_as_read(notification)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_sidebar_settings():
+	lms_settings = frappe.get_single("LMS Settings")
+	sidebar_items = frappe._dict()
+
+	items = [
+		"courses",
+		"batches",
+		"certified_members",
+		"jobs",
+		"statistics",
+		"notifications",
+		"programming_exercises",
+	]
+	for item in items:
+		sidebar_items[item] = lms_settings.get(item)
+
+	if len(lms_settings.sidebar_items):
+		web_pages = frappe.get_all(
+			"LMS Sidebar Item",
+			{"parenttype": "LMS Settings", "parentfield": "sidebar_items"},
+			["web_page", "route", "title as label", "icon"],
+		)
+		for page in web_pages:
+			page.to = page.route
+
+		sidebar_items.web_pages = web_pages
+
+	return sidebar_items
+
+
+@frappe.whitelist()
+def update_sidebar_item(webpage, icon):
+	filters = {
+		"web_page": webpage,
+		"parenttype": "LMS Settings",
+		"parentfield": "sidebar_items",
+		"parent": "LMS Settings",
+	}
+
+	if frappe.db.exists("LMS Sidebar Item", filters):
+		frappe.db.set_value("LMS Sidebar Item", filters, "icon", icon)
+	else:
+		doc = frappe.new_doc("LMS Sidebar Item")
+		doc.update(filters)
+		doc.icon = icon
+		doc.insert()
+
+
+@frappe.whitelist()
+def delete_sidebar_item(webpage):
+	return frappe.db.delete(
+		"LMS Sidebar Item",
+		{
+			"web_page": webpage,
+			"parenttype": "LMS Settings",
+			"parentfield": "sidebar_items",
+			"parent": "LMS Settings",
+		},
+	)
+
+
+@frappe.whitelist()
+def delete_lesson(lesson, chapter):
+	chapter = frappe.get_doc("Course Chapter", chapter)
+	chapter.lessons = [row for row in chapter.lessons if row.lesson != lesson]
+	chapter.save()
+
+	frappe.db.delete("LMS Course Progress", {"lesson": lesson})
+
+	frappe.db.delete("Course Lesson", lesson)
+
+
+@frappe.whitelist()
+def update_lesson_index(lesson, sourceChapter, targetChapter, idx):
+	hasMoved = sourceChapter == targetChapter
+
+	update_source_chapter(lesson, sourceChapter, idx, hasMoved)
+	if not hasMoved:
+		update_target_chapter(lesson, targetChapter, idx)
+
+
+def update_source_chapter(lesson, chapter, idx, hasMoved=False):
+	lessons = frappe.get_all(
+		"Lesson Reference",
+		{
+			"parent": chapter,
+		},
+		pluck="lesson",
+		order_by="idx",
+	)
+
+	lessons.remove(lesson)
+	if not hasMoved:
+		frappe.db.delete("Lesson Reference", {"parent": chapter, "lesson": lesson})
+	else:
+		lessons.insert(idx, lesson)
+
+	update_index(lessons, chapter)
+
+
+def update_target_chapter(lesson, chapter, idx):
+	lessons = frappe.get_all(
+		"Lesson Reference",
+		{
+			"parent": chapter,
+		},
+		pluck="lesson",
+		order_by="idx",
+	)
+
+	lessons.insert(idx, lesson)
+	new_lesson_reference = frappe.new_doc("Lesson Reference")
+	new_lesson_reference.update(
+		{
+			"lesson": lesson,
+			"parent": chapter,
+			"parenttype": "Course Chapter",
+			"parentfield": "lessons",
+		}
+	)
+	new_lesson_reference.insert()
+	update_index(lessons, chapter)
+
+
+def update_index(lessons, chapter):
+	for row in lessons:
+		frappe.db.set_value(
+			"Lesson Reference", {"lesson": row, "parent": chapter}, "idx", lessons.index(row) + 1
+		)
+
+
+@frappe.whitelist()
+def update_chapter_index(chapter, course, idx):
+	chapters = frappe.get_all(
+		"Chapter Reference",
+		{"parent": course},
+		pluck="chapter",
+		order_by="idx",
+	)
+
+	if chapter in chapters:
+		chapters.remove(chapter)
+
+	chapters.insert(idx, chapter)
+
+	for i, chapter_name in enumerate(chapters):
+		frappe.db.set_value("Chapter Reference", {"chapter": chapter_name, "parent": course}, "idx", i + 1)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_categories(doctype, filters):
+	categoryOptions = []
+
+	categories = frappe.get_all(
+		doctype,
+		filters,
+		pluck="category",
+	)
+	categories = list(set(categories))
+
+	for category in categories:
+		if category:
+			categoryOptions.append({"label": category, "value": category})
+
+	return categoryOptions
