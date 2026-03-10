@@ -244,6 +244,16 @@ const routes = [
 			),
 		props: true,
 	},
+	{
+		path: '/stores',
+		name: 'Stores',
+		component: () => import('@/pages/Stores.vue'),
+	},
+	{
+		path: '/members',
+		name: 'Members',
+		component: () => import('@/pages/Members.vue'),
+	},
 ]
 
 let router = createRouter({

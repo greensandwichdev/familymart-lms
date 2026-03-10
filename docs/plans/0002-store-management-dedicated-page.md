@@ -2,7 +2,7 @@
 
 ## Objective
 
-Create a dedicated standalone page for Store and Member management to replace the current popup dialog approach in Settings. This will improve user experience by providing a full-page interface instead of managing data in constrained dialogs.
+Create two separate standalone pages for Store and Member management to replace the current popup dialog approach in Settings. This will improve user experience by providing full-page interfaces instead of managing data in constrained dialogs.
 
 ---
 
@@ -31,29 +31,49 @@ Create a dedicated standalone page for Store and Member management to replace th
 
 ### Page Structure
 
-Create a new standalone page `/store-management` with:
+Create two separate standalone pages:
 
-1. **Sidebar Navigation** (left panel, ~200px width)
-   - Stores - Manage stores and their members
-   - Members - Member directory across all stores
+1. **`/stores`** - Store list page
+2. **`/members`** - Member directory page
 
-2. **Main Content Area** (right side, flexible width)
-   - Renders the selected component (Stores or Members)
+Both pages use the existing main AppSidebar (not a separate sidebar).
 
 ### UI Mockup
 
 ```
+AppSidebar (existing):
+├── Dashboard
+├── Courses
+├── Batches
+├── Certified Members
+├── Jobs
+├── Statistics
+├── Stores        ← NEW (/stores)
+└── Members       ← NEW (/members)
+
+Stores Page:
 ┌─────────────────────────────────────────────────────────────┐
-│  Header (Breadcrumbs, Page Title)                         │
-├──────────────┬──────────────────────────────────────────────┤
-│              │                                              │
-│  Stores     │    [Main Content Area]                      │
-│  (nav)      │    - Store list with filters                 │
-│              │    - OR Member directory                     │
-│  Members    │    - Forms for add/edit                       │
-│  (nav)      │                                              │
-│              │                                              │
-└──────────────┴──────────────────────────────────────────────┘
+│  Breadcrumbs: Home / Stores                                │
+├─────────────────────────────────────────────────────────────┤
+│  Stores                                                    │
+│  Manage stores and their members                           │
+├─────────────────────────────────────────────────────────────┤
+│  [Search] [Province] [Regency] [District]                │
+├─────────────────────────────────────────────────────────────┤
+│  [Store List with filters and actions]                    │
+└─────────────────────────────────────────────────────────────┘
+
+Members Page:
+┌─────────────────────────────────────────────────────────────┐
+│  Breadcrumbs: Home / Members                               │
+├─────────────────────────────────────────────────────────────┤
+│  Members                                                   │
+│  View and manage members across all stores                │
+├─────────────────────────────────────────────────────────────┤
+│  [Search]                                                 │
+├─────────────────────────────────────────────────────────────┤
+│  [Member List with profile links and roles]               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -64,8 +84,8 @@ Create a new standalone page `/store-management` with:
 
 | Scenario | Expected Behavior |
 |----------|-------------------|
-| Anonymous user accesses `/store-management` | Redirect to login or show access denied |
-| User without Store Manager role accesses page | Show permission error or hide sensitive data |
+| Anonymous user accesses `/stores` or `/members` | Redirect to login or show access denied |
+| User without Moderator/System Manager role accesses page | Show permission error or redirect to home |
 | User session expires while on page | Redirect to login, then back to page after re-auth |
 
 ### 2. Data Loading
@@ -83,10 +103,10 @@ Create a new standalone page `/store-management` with:
 
 | Scenario | Expected Behavior |
 |----------|-------------------|
-| User directly visits `/store-management` | Load page with default tab (Stores) |
-| User visits `/store-management?tab=members` | Load page with Members tab active |
-| User refreshes page | Preserve current tab selection via URL query param |
-| Browser back button from another page | Return to previous page, not previous tab |
+| User directly visits `/stores` | Load stores page |
+| User directly visits `/members` | Load members page |
+| User refreshes page | Stay on current page |
+| Browser back button from another page | Return to previous page |
 
 ### 4. Form Validation
 
@@ -118,45 +138,28 @@ Create a new standalone page `/store-management` with:
 
 ## Implementation Plan
 
-### Phase 1: Create New Page Component
+### Phase 1: Cleanup
 
-**File:** `frontend/src/pages/StoreManagement.vue`
+Delete incorrect implementation files:
+- `frontend/src/pages/StoreManagement.vue`
+- `frontend/src/components/StoreManagement/` folder
 
-Structure:
-```vue
-<template>
-  <div class="flex h-screen">
-    <!-- Sidebar Navigation -->
-    <aside class="w-56 bg-[#39bdf8] p-4">
-      <!-- Nav items -->
-    </aside>
-    
-    <!-- Main Content -->
-    <main class="flex-1 overflow-auto p-6">
-      <component :is="activeComponent" />
-    </main>
-  </div>
-</template>
-```
-
-Key features:
-- Route-aware tab state (syncs with URL query param)
-- Responsive sidebar (collapsible on mobile)
-- Reuses existing `Stores.vue` and `Members.vue` components
-
-### Phase 2: Add Route
+### Phase 2: Add Routes
 
 **File:** `frontend/src/router.js`
 
 ```javascript
 {
-  path: '/store-management',
-  name: 'StoreManagement',
-  component: () => import('@/pages/StoreManagement.vue'),
-}
+  path: '/stores',
+  name: 'Stores',
+  component: () => import('@/pages/Stores.vue'),
+},
+{
+  path: '/members',
+  name: 'Members',
+  component: () => import('@/pages/Members.vue'),
+},
 ```
-
-**Note:** Add route guard to check authentication and permissions.
 
 ### Phase 3: Add Sidebar Navigation
 
@@ -167,39 +170,60 @@ Add to `getSidebarLinks()`:
 {
   label: 'Stores',
   icon: 'Store',
-  to: 'StoreManagement',
-  activeFor: ['StoreManagement'],
-}
+  to: 'Stores',
+  activeFor: ['Stores'],
+},
+{
+  label: 'Members',
+  icon: 'Users',
+  to: 'Members',
+  activeFor: ['Members'],
+},
 ```
 
-### Phase 4: URL State Management
+### Phase 4: Create Pages
 
-**Query Parameter Strategy:**
-- Use `?tab=stores` or `?tab=members` in URL
-- Default to `?tab=stores`
-- This enables:
-  - Browser history navigation
-  - Bookmarking
-  - Sharing direct links
+**File:** `frontend/src/pages/Stores.vue`
 
-### Phase 5: Optional Enhancements (Future)
+- Full-page layout (like Statistics.vue)
+- Breadcrumbs, header, description
+- Search and region filters (province, regency, district)
+- Store list with member management (using ListView component)
+- Reuse API calls from Settings/Stores.vue
 
-1. **Breadcrumb Integration**: Add proper breadcrumbs for navigation hierarchy
-2. **Keyboard Shortcuts**: Add shortcuts for quick navigation (e.g., `Ctrl+1` for Stores, `Ctrl+2` for Members)
-3. **Search Everywhere**: Global search across stores and members
-4. **Activity Log**: Track recent changes to stores/members
+**File:** `frontend/src/pages/Members.vue`
+
+- Full-page layout (like Statistics.vue)
+- Breadcrumbs, header, description
+- Search functionality
+- Member list with profile links (using ListView component)
+- Pagination (load more)
+- Reuse API calls from Settings/Members.vue
 
 ---
 
 ## Files to Create/Modify
 
-### Create (1 file)
-1. `frontend/src/pages/StoreManagement.vue` - New standalone page
+### Create (2 files)
 
-### Modify (3 files)
-1. `frontend/src/router.js` - Add new route
-2. `frontend/src/utils/index.js` - Add sidebar navigation item
-3. `frontend/src/components/Settings/Settings.vue` - Optionally remove Stores tab (or keep for backward compatibility)
+1. `frontend/src/pages/Stores.vue` - Stores page with full-page layout
+2. `frontend/src/pages/Members.vue` - Members page with full-page layout
+
+### Modify (2 files)
+
+1. `frontend/src/router.js` - Add `/stores` and `/members` routes
+2. `frontend/src/utils/index.js` - Add Stores and Members sidebar links
+
+### Delete
+
+1. `frontend/src/pages/StoreManagement.vue` - Incorrect implementation
+2. `frontend/src/components/StoreManagement/` - Incorrect implementation
+
+### Keep Unchanged (for backward compatibility)
+
+1. `frontend/src/components/Settings/Stores.vue` - Existing dialog component
+2. `frontend/src/components/Settings/Members.vue` - Existing dialog component
+3. `frontend/src/components/Settings/Settings.vue` - Keep Stores tab in Settings dialog
 
 ---
 
@@ -207,28 +231,59 @@ Add to `getSidebarLinks()`:
 
 - Keep Stores tab in Settings.vue for existing users who may have bookmarked it
 - Existing `openSettings('Stores')` calls will still work (open Settings dialog to Stores tab)
-- Consider adding a banner in Settings dialog pointing to the new dedicated page
+- New `/stores` and `/members` pages provide better UX for store and member management
 
 ---
 
 ## Acceptance Criteria
 
-1. ✅ New `/store-management` page is accessible via sidebar
-2. ✅ Page shows Stores tab by default
-3. ✅ User can switch between Stores and Members tabs
-4. ✅ Tab selection is reflected in URL (e.g., `?tab=members`)
-5. ✅ Directly visiting URL with tab param loads correct tab
-6. ✅ Sidebar persists when navigating between tabs
-7. ✅ Existing popup dialogs in Stores.vue/Members.vue work within the new page
-8. ✅ Responsive design works on tablet and desktop
-9. ✅ Loading and error states are handled gracefully
+### Functional Requirements
+
+1. ✅ New `/stores` page is accessible via main sidebar
+2. ✅ New `/members` page is accessible via main sidebar
+3. ✅ Stores page displays store list with filters
+4. ✅ Stores page allows managing store members
+5. ✅ Members page displays member directory
+6. ✅ Members page allows viewing member profiles
+7. ✅ Existing popup dialogs in Stores.vue/Members.vue continue to work (Settings dialog)
+8. ✅ Loading and error states are handled gracefully
+
+### Permission Requirements
+
+9. ✅ Anonymous user accessing `/stores` or `/members` is redirected or shown access denied
+10. ✅ User without Moderator/System Manager role cannot access the pages
+11. ✅ Session expiry handling (redirect to login)
+
+### Navigation Requirements
+
+12. ✅ Browser back/forward navigation works correctly
+13. ✅ Pages can be bookmarked
+
+### UX Requirements
+
+14. ✅ Responsive design works on tablet and desktop
+15. ✅ Empty states show helpful messages
+16. ✅ Loading states are displayed during data fetch
+17. ✅ Pages follow existing layout patterns (Statistics.vue style)
 
 ---
 
 ## Timeline Estimate
 
-- Phase 1-3: ~1-2 hours
-- Phase 4: ~30 minutes
-- Testing & edge cases: ~1 hour
+### Phase 1: Cleanup
+- Delete incorrect files: ~5 minutes
 
-**Total: ~3-4 hours**
+### Phase 2: Add Routes
+- router.js modifications: ~10 minutes
+
+### Phase 3: Add Sidebar Navigation
+- utils/index.js modifications: ~10 minutes
+
+### Phase 4: Create Pages
+- Stores.vue: ~30 minutes
+- Members.vue: ~20 minutes
+
+### Phase 5: Testing
+- ~30 minutes
+
+**Total: ~1.5 hours**

@@ -445,6 +445,18 @@ export function getSidebarLinks() {
 			to: 'Statistics',
 			activeFor: ['Statistics'],
 		},
+		{
+			label: 'Stores',
+			icon: 'Store',
+			to: 'Stores',
+			activeFor: ['Stores'],
+		},
+		{
+			label: 'Members',
+			icon: 'Users',
+			to: 'Members',
+			activeFor: ['Members'],
+		},
 	]
 }
 
