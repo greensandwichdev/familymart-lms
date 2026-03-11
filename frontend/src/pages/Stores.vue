@@ -92,6 +92,9 @@
 								<div v-else-if="column.key === 'organization'">
 									<div class="text-sm text-ink-gray-7">{{ row.organization || '-' }}</div>
 								</div>
+								<div v-else-if="['province', 'regency', 'district'].includes(column.key)">
+									<div class="text-sm text-ink-gray-7">{{ row[column.key] || '-' }}</div>
+								</div>
 								<div v-else>
 									{{ row[column.key] }}
 								</div>
@@ -233,6 +236,21 @@ const storeColumns = computed(() => [
 		label: __('Store Code'),
 		key: 'store_code',
 		width: 1,
+	},
+	{
+		label: __('Province'),
+		key: 'province',
+		width: 1.5,
+	},
+	{
+		label: __('Regency'),
+		key: 'regency',
+		width: 1.5,
+	},
+	{
+		label: __('District'),
+		key: 'district',
+		width: 1.5,
 	},
 	{
 		label: __('Organization'),

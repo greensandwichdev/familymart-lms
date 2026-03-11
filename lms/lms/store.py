@@ -21,6 +21,12 @@ def get_stores():
 		],
 		order_by="store_name",
 	)
+
+	for store in stores:
+		if store.district:
+			district_doc = frappe.get_doc("District", store.district)
+			store.district = district_doc.district_name
+
 	return stores
 
 
