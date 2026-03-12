@@ -5,24 +5,31 @@
  "creation": "2024-11-18 12:27:13.283169",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "title",
-  "program_courses",
-  "program_members"
- ],
- "fields": [
-  {
-   "fieldname": "program_courses",
-   "fieldtype": "Table",
-   "label": "Program Courses",
-   "options": "LMS Program Course"
-  },
-  {
-   "fieldname": "program_members",
-   "fieldtype": "Table",
-   "label": "Program Members",
-   "options": "LMS Program Member"
-  },
+  "field_order": [
+    "title",
+    "program_courses",
+    "program_ranks",
+    "program_members"
+  ],
+  "fields": [
+    {
+      "fieldname": "program_courses",
+      "fieldtype": "Table",
+      "label": "Program Courses",
+      "options": "LMS Program Course"
+    },
+    {
+      "fieldname": "program_ranks",
+      "fieldtype": "Table",
+      "label": "Program Ranks",
+      "options": "LMS Program Rank"
+    },
+    {
+      "fieldname": "program_members",
+      "fieldtype": "Table",
+      "label": "Program Members",
+      "options": "LMS Program Member"
+    },
   {
    "fieldname": "title",
    "fieldtype": "Data",

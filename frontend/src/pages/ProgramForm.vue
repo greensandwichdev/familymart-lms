@@ -94,18 +94,18 @@
 			</div>
 		</div>
 
-		<!-- Members by Rank Section -->
+		<!-- Program Ranks Section -->
 		<div class="mb-8">
 			<div class="flex items-center justify-between mb-2">
 				<div class="text-lg text-ink-gray-9 font-semibold">
-					{{ __('Members by Rank') }}
+					{{ __('Program Ranks') }}
 				</div>
 			</div>
 
 			<ListView
 				:columns="rankColumns"
-				:rows="rankSummary"
-				:row-key="(row) => row.rank"
+				:rows="rankWithCounts"
+				:row-key="(row) => row.name"
 				:options="{
 					showTooltip: false,
 				}"
@@ -116,7 +116,7 @@
 					<ListHeaderItem :item="item" v-for="item in rankColumns" />
 				</ListHeader>
 				<ListRows>
-					<ListRow :row="row" v-for="row in rankSummary" />
+					<ListRow :row="row" v-for="row in rankWithCounts" />
 				</ListRows>
 				<ListSelectBanner>
 					<template #actions="{ unselectAll, selections }">
@@ -416,24 +416,40 @@ const membersByMember = computed(() => {
 	return (program.doc?.program_members || []).filter((m) => !m.store_rank)
 })
 
-const rankSummary = computed(() => {
-	const ranks = {}
-	membersByRank.value.forEach((m) => {
-		if (!ranks[m.store_rank]) {
-			ranks[m.store_rank] = {
-				rank: m.store_rank,
-				rank_name: m.store_rank_name,
-				count: 0,
+// Program ranks - configured ranks for the program
+const programRanks = computed(() => {
+	return program.doc?.program_ranks || []
+})
+
+// Compute member count for each program rank
+const rankWithCounts = computed(() => {
+	const membersByRankMap = {}
+	;(program.doc?.program_members || []).forEach((m) => {
+		if (m.store_rank) {
+			if (!membersByRankMap[m.store_rank]) {
+				membersByRankMap[m.store_rank] = 0
 			}
+			membersByRankMap[m.store_rank]++
 		}
-		ranks[m.store_rank].count++
 	})
-	return Object.values(ranks)
+	
+	return (program.doc?.program_ranks || []).map((r) => ({
+		name: r.name,
+		store_rank: r.store_rank,
+		rank_name: r.rank_name || r.store_rank,
+		province: r.province || '',
+		regency: r.regency || '',
+		district: r.district || '',
+		count: membersByRankMap[r.store_rank] || 0,
+	}))
 })
 
 const rankColumns = [
-	{ label: 'Store Rank', key: 'rank_name', width: '60%' },
-	{ label: 'Members', key: 'count', width: '40%' },
+	{ label: 'Store Rank', key: 'rank_name', width: '30%' },
+	{ label: 'Province', key: 'province', width: '20%' },
+	{ label: 'Regency', key: 'regency', width: '20%' },
+	{ label: 'District', key: 'district', width: '20%' },
+	{ label: 'Members', key: 'count', width: '10%' },
 ]
 
 const memberDirectColumns = [
@@ -466,66 +482,89 @@ const addProgramCourse = () => {
 
 const addProgramMember = async () => {
 	try {
-		let memberList = []
-
 		if (enrollmentType.value === 'by_store_rank') {
-			// Method 1: By Store Rank
+			// Method 1: By Store Rank - Add to program_ranks (rank configuration)
 			if (!member.value) {
 				toast.error(__('Please select a Store Rank'))
 				return
 			}
-			
-			const apiParams = {
-				rank: member.value,
-			}
-			
-			// Add region filters if selected
-			if (regionFilters.value.province) {
-				apiParams.province = regionFilters.value.province
-			}
-			if (regionFilters.value.regency) {
-				apiParams.regency = regionFilters.value.regency
-			}
-			if (regionFilters.value.district) {
-				apiParams.district = regionFilters.value.district
-			}
-			
-			memberList = await call('lms.lms.api.get_users_by_ranks', apiParams)
 
-			if (!memberList.length) {
-				toast.error(__('No users found for this rank'))
+			// Check if this rank already exists in program_ranks
+			const existingRanks = program.doc?.program_ranks || []
+			const rankExists = existingRanks.some(
+				(r) => r.store_rank === member.value &&
+					(r.province || '') === (regionFilters.value.province || '') &&
+					(r.regency || '') === (regionFilters.value.regency || '') &&
+					(r.district || '') === (regionFilters.value.district || '')
+			)
+
+			if (rankExists) {
+				toast.error(__('This rank with the same region filters already exists'))
 				return
 			}
 
-			// Add users with store_rank
-			memberList = memberList.map((u) => ({
-				member: u.name,
+			// Add to program_ranks
+			const newRank = {
 				store_rank: member.value,
-				full_name: u.full_name,
-			}))
-		} else {
-			// Method 2: By Member Selection
-			if (!selectedMembers.value || selectedMembers.value.length === 0) {
-				toast.error(__('Please select at least one member'))
-				return
+				province: regionFilters.value.province || '',
+				regency: regionFilters.value.regency || '',
+				district: regionFilters.value.district || '',
 			}
 
-			// Fetch user details for each selected user
-			for (const userName of selectedMembers.value) {
-				try {
-					const userDetails = await call('frappe.client.get', {
-						doctype: 'User',
-						name: userName,
-					})
-					memberList.push({
-						member: userName,
-						store_rank: null,
-						full_name: userDetails.full_name,
-						email: userDetails.email,
-					})
-				} catch (err) {
-					console.error('Failed to fetch user details for:', userName, err)
-				}
+			program.setValue.submit(
+				{
+					program_ranks: [...existingRanks, newRank],
+				},
+				{
+					onSuccess: async (data) => {
+						// Sync members based on new rank config
+						try {
+							await call('lms.lms.api.sync_program_members_by_ranks', {
+								program: props.programName,
+							})
+						} catch (e) {
+							console.error('Failed to sync members:', e)
+						}
+
+						showDialog.value = false
+						member.value = null
+						regionFilters.value = { province: '', regency: '', district: '' }
+						regencyOptions.value = []
+						districtOptions.value = []
+						toast.success(__('Rank added to program'))
+						program.reload()
+					},
+					onError(err) {
+						toast.error(err.messages?.[0] || err)
+					},
+				},
+			)
+			return
+		}
+
+		// Method 2: By Member Selection - Add to program_members directly
+		let memberList = []
+
+		if (!selectedMembers.value || selectedMembers.value.length === 0) {
+			toast.error(__('Please select at least one member'))
+			return
+		}
+
+		// Fetch user details for each selected user
+		for (const userName of selectedMembers.value) {
+			try {
+				const userDetails = await call('frappe.client.get', {
+					doctype: 'User',
+					name: userName,
+				})
+				memberList.push({
+					member: userName,
+					store_rank: null,
+					full_name: userDetails.full_name,
+					email: userDetails.email,
+				})
+			} catch (err) {
+				console.error('Failed to fetch user details for:', userName, err)
 			}
 		}
 
@@ -591,20 +630,36 @@ const remove = (selections, unselectAll, doctype) => {
 
 const removeByRank = (selections, unselectAll) => {
 	selections = Array.from(selections)
-	const ranksToRemove = selections.map((r) => r.rank)
-	
-	const updatedMembers = (program.doc.program_members || []).filter(
+	const ranksToRemove = selections.map((r) => r.store_rank)
+
+	// Remove from program_ranks
+	const updatedRanks = (program.doc.program_ranks || []).filter(
 		(row) => !ranksToRemove.includes(row.store_rank),
 	)
-	
+
+	// For program_members: keep members with progress > 1%, remove those with 0%
+	const existingMembers = program.doc.program_members || []
+	const updatedMembers = existingMembers.map((m) => {
+		if (ranksToRemove.includes(m.store_rank)) {
+			if (m.progress > 1) {
+				// Keep member but clear store_rank (becomes manual)
+				return { ...m, store_rank: null }
+			}
+			// Remove member with 0% progress
+			return null
+		}
+		return m
+	}).filter(Boolean)
+
 	program.setValue.submit(
 		{
+			program_ranks: updatedRanks,
 			program_members: updatedMembers,
 		},
 		{
 			onSuccess(data) {
 				unselectAll()
-				toast.success(__('Members removed successfully'))
+				toast.success(__('Rank removed from program'))
 				program.reload()
 			},
 			onError(err) {

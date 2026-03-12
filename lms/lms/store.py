@@ -1,6 +1,7 @@
 """API methods for Store Management."""
 
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -115,6 +116,8 @@ def assign_member_to_store(member, store, rank, full_name=None):
 	if full_name is not None:
 		frappe.db.set_value("User", member, "full_name", full_name)
 
+	sync_programs_for_rank(rank)
+
 	return {
 		"member": member,
 		"store": store,
@@ -122,19 +125,36 @@ def assign_member_to_store(member, store, rank, full_name=None):
 	}
 
 
+def sync_programs_for_rank(rank):
+	"""Sync all programs that have the given rank configured."""
+	programs = frappe.get_all(
+		"LMS Program",
+		fields=["name"],
+		filters=[
+			["LMS Program Rank", "store_rank", "=", rank]
+		],
+	)
+
+	for prog in programs:
+		try:
+			from lms.lms.api import sync_program_members_by_ranks
+			sync_program_members_by_ranks(prog.name)
+		except Exception as e:
+			frappe.log_error(f"Failed to sync program {prog.name}: {str(e)}")
+
+
 @frappe.whitelist()
 def update_member_rank(member, rank, full_name=None):
 	"""Updates a member's rank and optionally their full name."""
-	frappe.flags.in_test = True
-	print(f"update_member_rank called: member={member}, rank={rank}, full_name={full_name}")
 	if not rank:
 		frappe.throw("Store Rank is mandatory")
 
 	frappe.db.set_value("User", member, "store_rank", rank)
 	if full_name is not None:
 		frappe.db.set_value("User", member, "full_name", full_name)
-	frappe.db.commit()
-	print(f"Updated user {member}: store_rank={rank}, full_name={full_name}")
+
+	sync_programs_for_rank(rank)
+
 	return {"member": member, "rank": rank}
 
 

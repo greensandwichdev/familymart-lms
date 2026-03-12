@@ -437,6 +437,73 @@ def get_users_by_ranks(rank, province=None, regency=None, district=None):
 
 
 @frappe.whitelist()
+def sync_program_members_by_ranks(program):
+	"""Sync program members based on program_ranks configuration."""
+	if not program:
+		return {"success": False, "message": "Program is required"}
+
+	program_doc = frappe.get_doc("LMS Program", program)
+	program_ranks = program_doc.program_ranks or []
+
+	if not program_ranks:
+		return {"success": True, "message": "No program ranks configured", "added": 0}
+
+	existing_members = {row.member for row in program_doc.program_members}
+	users_to_add = []
+
+	for prog_rank in program_ranks:
+		rank = prog_rank.store_rank
+		province = prog_rank.province
+		regency = prog_rank.regency
+		district = prog_rank.district
+
+		user_filters = {
+			"enabled": 1,
+			"name": ["not in", ["Administrator", "Guest"]],
+			"store_rank": rank,
+		}
+
+		if province or regency or district:
+			store_filters_dict = {"is_active": 1}
+			if province:
+				store_filters_dict["province"] = province
+			if regency:
+				store_filters_dict["regency"] = regency
+			if district:
+				store_filters_dict["district"] = district
+
+			stores = frappe.get_all("LMS Store", store_filters_dict, pluck="name")
+			if not stores:
+				continue
+			user_filters["lms_store"] = ["in", stores]
+
+		users = frappe.get_all(
+			"User",
+			filters=user_filters,
+			fields=["name", "full_name"],
+		)
+
+		for user in users:
+			if user.name not in existing_members:
+				users_to_add.append({
+					"member": user.name,
+					"store_rank": rank,
+					"full_name": user.full_name,
+				})
+				existing_members.add(user.name)
+
+	if not users_to_add:
+		return {"success": True, "message": "No new users to add", "added": 0}
+
+	for user_data in users_to_add:
+		program_doc.append("program_members", user_data)
+
+	program_doc.save(ignore_permissions=True)
+
+	return {"success": True, "message": f"Added {len(users_to_add)} members", "added": len(users_to_add)}
+
+
+@frappe.whitelist()
 def save_evaluation_details(
 	member,
 	course,
