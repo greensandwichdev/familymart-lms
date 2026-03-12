@@ -26,7 +26,6 @@
 				</FormControl>
 				<FormControl
 					v-model="filters.province"
-					:label="__('Province')"
 					type="select"
 					:options="provinceOptions"
 					placeholder="All Provinces"
@@ -35,22 +34,18 @@
 				/>
 				<FormControl
 					v-model="filters.regency"
-					:label="__('Regency')"
 					type="select"
 					:options="regencyOptions"
 					placeholder="All Regencies"
 					class="w-1/4"
-					:disabled="!filters.province"
 					@change="onRegencyChange"
 				/>
 				<FormControl
 					v-model="filters.district"
-					:label="__('District')"
 					type="select"
 					:options="districtOptions"
 					placeholder="All Districts"
 					class="w-1/4"
-					:disabled="!filters.regency"
 				/>
 			</div>
 			<div class="overflow-y-scroll h-[60vh]">
@@ -160,6 +155,19 @@
 								:placeholder="__('Search user by email or name')"
 								:required="true"
 							/>
+							<template v-else>
+								<FormControl
+									v-model="memberForm.email"
+									:label="__('Email')"
+									type="email"
+									:disabled="true"
+								/>
+								<FormControl
+									v-model="memberForm.full_name"
+									:label="__('Full Name')"
+									type="text"
+								/>
+							</template>
 							<FormControl
 								v-model="memberForm.rank"
 								:label="__('Store Rank')"
@@ -213,6 +221,7 @@ const filters = ref({
 
 const memberForm = ref({
 	user: '',
+	full_name: '',
 	rank: '',
 })
 
@@ -266,7 +275,11 @@ const updateMemberRank = createResource({
 		return {
 			member: values.member,
 			rank: values.rank,
+			full_name: values.full_name,
 		}
+	},
+	onError(error) {
+		console.error('Error updating member rank:', error)
 	},
 })
 
@@ -320,8 +333,6 @@ const regencyOptions = ref([])
 const districtOptions = ref([])
 
 const onProvinceChange = async () => {
-	filters.value.regency = ''
-	filters.value.district = ''
 	if (filters.value.province) {
 		console.log('Fetching regencies for province:', filters.value.province)
 		try {
@@ -335,7 +346,6 @@ const onProvinceChange = async () => {
 }
 
 const onRegencyChange = async () => {
-	filters.value.district = ''
 	if (filters.value.regency) {
 		console.log('Fetching districts for regency:', filters.value.regency)
 		try {
@@ -375,6 +385,8 @@ const editMemberRank = (member) => {
 	editingMember.value = member
 	memberForm.value = {
 		user: member.name,
+		email: member.email,
+		full_name: member.full_name,
 		rank: member.store_rank,
 	}
 	showAddMemberForm.value = true
@@ -398,6 +410,7 @@ const saveMember = async () => {
 			await updateMemberRank.submit({
 				member: editingMember.value.name,
 				rank: memberForm.value.rank,
+				full_name: memberForm.value.full_name,
 			})
 		} else {
 			await assignMember.submit({
@@ -408,7 +421,7 @@ const saveMember = async () => {
 		}
 		showAddMemberForm.value = false
 		editingMember.value = null
-		memberForm.value = { user: '', rank: '' }
+		memberForm.value = { user: '', full_name: '', rank: '' }
 		loadMembers()
 	} catch (error) {
 		console.error('Error saving member:', error)

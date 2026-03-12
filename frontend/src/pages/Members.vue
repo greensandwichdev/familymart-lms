@@ -144,7 +144,7 @@
 			}"
 		>
 			<template #body-content>
-				<div v-if="!editingMember" class="space-y-4">
+				<div class="space-y-4">
 					<FormControl
 						v-model="memberForm.email"
 						:label="__('Email')"
@@ -152,17 +152,16 @@
 						type="email"
 						class="w-full"
 						:required="true"
+						:disabled="!!editingMember"
 					/>
 					<FormControl
-						v-model="memberForm.first_name"
-						:label="__('First Name')"
+						v-model="memberForm.full_name"
+						:label="__('Full Name')"
 						placeholder="John"
 						type="text"
 						class="w-full"
 						:required="true"
 					/>
-				</div>
-				<div class="space-y-4">
 					<Link
 						class="w-full"
 						v-model="memberForm.lms_store"
@@ -176,7 +175,6 @@
 						v-model="memberForm.store_rank"
 						doctype="Store Rank"
 						:label="__('Store Rank')"
-						:filters="{ is_active: 1 }"
 						placeholder="Select rank"
 					/>
 				</div>
@@ -299,7 +297,7 @@ const deletingMember = ref<Member | null>(null)
 
 const memberForm = ref({
 	email: '',
-	first_name: '',
+	full_name: '',
 	lms_store: '',
 	store_rank: '',
 })
@@ -327,7 +325,7 @@ const createMember = createResource({
 			doc: {
 				doctype: 'User',
 				email: memberForm.value.email,
-				first_name: memberForm.value.first_name,
+				full_name: memberForm.value.full_name,
 				send_login_email: 0,
 			},
 		}
@@ -347,6 +345,7 @@ const assignMember = createResource({
 			member: memberForm.value.email,
 			store: memberForm.value.lms_store,
 			rank: memberForm.value.store_rank,
+			full_name: memberForm.value.full_name,
 		}
 	},
 	auto: false,
@@ -354,6 +353,26 @@ const assignMember = createResource({
 		showMemberDialog.value = false
 		resetForm()
 		reloadMembers()
+	},
+})
+
+const updateMember = createResource({
+	url: 'lms.lms.store.update_member_rank',
+	makeParams() {
+		return {
+			member: memberForm.value.email,
+			rank: memberForm.value.store_rank,
+			full_name: memberForm.value.full_name,
+		}
+	},
+	auto: false,
+	onSuccess() {
+		showMemberDialog.value = false
+		resetForm()
+		reloadMembers()
+	},
+	onError(error) {
+		console.error('Error updating member:', error)
 	},
 })
 
@@ -381,8 +400,8 @@ const openNewMemberDialog = () => {
 const editMember = (member: Member) => {
 	editingMember.value = member
 	memberForm.value = {
-		email: '',
-		first_name: '',
+		email: member.name,
+		full_name: member.full_name,
 		lms_store: member.lms_store || '',
 		store_rank: member.store_rank || '',
 	}
@@ -397,7 +416,7 @@ const confirmDelete = (member: Member) => {
 const saveMember = async () => {
 	try {
 		if (editingMember.value) {
-			await assignMember.submit()
+			await updateMember.submit()
 		} else {
 			await createMember.submit()
 		}
@@ -417,7 +436,7 @@ const deleteMember = async () => {
 const resetForm = () => {
 	memberForm.value = {
 		email: '',
-		first_name: '',
+		full_name: '',
 		lms_store: '',
 		store_rank: '',
 	}

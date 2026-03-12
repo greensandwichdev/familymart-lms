@@ -105,13 +105,15 @@ def get_store_ranks():
 
 
 @frappe.whitelist()
-def assign_member_to_store(member, store, rank):
+def assign_member_to_store(member, store, rank, full_name=None):
 	"""Assigns a user to a store with a rank."""
 	if not rank:
 		frappe.throw("Store Rank is mandatory")
 
 	frappe.db.set_value("User", member, "lms_store", store)
 	frappe.db.set_value("User", member, "store_rank", rank)
+	if full_name is not None:
+		frappe.db.set_value("User", member, "full_name", full_name)
 
 	return {
 		"member": member,
@@ -121,12 +123,18 @@ def assign_member_to_store(member, store, rank):
 
 
 @frappe.whitelist()
-def update_member_rank(member, rank):
-	"""Updates a member's rank."""
+def update_member_rank(member, rank, full_name=None):
+	"""Updates a member's rank and optionally their full name."""
+	frappe.flags.in_test = True
+	print(f"update_member_rank called: member={member}, rank={rank}, full_name={full_name}")
 	if not rank:
 		frappe.throw("Store Rank is mandatory")
 
 	frappe.db.set_value("User", member, "store_rank", rank)
+	if full_name is not None:
+		frappe.db.set_value("User", member, "full_name", full_name)
+	frappe.db.commit()
+	print(f"Updated user {member}: store_rank={rank}, full_name={full_name}")
 	return {"member": member, "rank": rank}
 
 
