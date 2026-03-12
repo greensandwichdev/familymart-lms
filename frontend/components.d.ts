@@ -102,6 +102,7 @@ declare module 'vue' {
     SettingFields: typeof import('./src/components/Settings/SettingFields.vue')['default']
     Settings: typeof import('./src/components/Settings/Settings.vue')['default']
     SidebarLink: typeof import('./src/components/SidebarLink.vue')['default']
+    StoreCard: typeof import('./src/components/StoreCard.vue')['default']
     Stores: typeof import('./src/components/Settings/Stores.vue')['default']
     StudentHeatmap: typeof import('./src/components/StudentHeatmap.vue')['default']
     StudentModal: typeof import('./src/components/Modals/StudentModal.vue')['default']

@@ -4,8 +4,9 @@
  "creation": "2026-03-08 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
-"field_order": [
+ "field_order": [
    "store_name",
+   "image",
    "store_code",
    "organization",
    "address",
@@ -15,17 +16,22 @@
    "regency",
    "district"
   ],
- "fields": [
-  {
-   "fieldname": "store_name",
-   "fieldtype": "Data",
-   "in_global_search": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Store Name",
-   "reqd": 1
-  },
-  {
+  "fields": [
+   {
+    "fieldname": "store_name",
+    "fieldtype": "Data",
+    "in_global_search": 1,
+    "in_list_view": 1,
+    "in_standard_filter": 1,
+    "label": "Store Name",
+    "reqd": 1
+   },
+   {
+    "fieldname": "image",
+    "fieldtype": "Attach Image",
+    "label": "Store Image"
+   },
+   {
    "fieldname": "store_code",
    "fieldtype": "Data",
    "in_global_search": 1,

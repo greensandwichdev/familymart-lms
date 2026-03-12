@@ -52,52 +52,18 @@
 				/>
 			</div>
 
-			<ListView
+			<div
 				v-if="storeList.length"
-				:columns="storeColumns"
-				:rows="storeList"
-				row-key="name"
-				:options="{ showTooltip: false, selectable: false }"
+				class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"
 			>
-				<ListHeader class="mb-2 grid items-center space-x-4 rounded bg-surface-gray-2 p-2">
-					<ListHeaderItem :item="item" v-for="item in storeColumns" />
-				</ListHeader>
-				<ListRows>
-					<ListRow
-						v-for="row in storeList"
-						:row="row"
-						@click="manageMembers(row)"
-					>
-						<template #default="{ column, item }">
-							<ListRowItem :item="row[column.key]" :align="column.align">
-								<div v-if="column.key === 'actions'">
-									<Button variant="ghost" @click.stop="manageMembers(row)">
-										<template #prefix>
-											<Users class="size-4 stroke-1.5" />
-										</template>
-										{{ __('Members') }}
-									</Button>
-								</div>
-								<div v-else-if="column.key === 'store_name'">
-									<div class="font-medium text-ink-gray-9">{{ row.store_name }}</div>
-								</div>
-								<div v-else-if="column.key === 'store_code'">
-									<div class="text-sm text-ink-gray-7">{{ row.store_code }}</div>
-								</div>
-								<div v-else-if="column.key === 'organization'">
-									<div class="text-sm text-ink-gray-7">{{ row.organization || '-' }}</div>
-								</div>
-								<div v-else-if="['province', 'regency', 'district'].includes(column.key)">
-									<div class="text-sm text-ink-gray-7">{{ row[column.key] || '-' }}</div>
-								</div>
-								<div v-else>
-									{{ row[column.key] }}
-								</div>
-							</ListRowItem>
-						</template>
-					</ListRow>
-				</ListRows>
-			</ListView>
+				<router-link
+					v-for="store in storeList"
+					:key="store.name"
+					:to="{ name: 'StoreDetail', params: { storeName: store.name } }"
+				>
+					<StoreCard :store="store" />
+				</router-link>
+			</div>
 			<div v-else-if="stores.loading" class="py-10 text-center text-ink-gray-6">
 				{{ __('Loading...') }}
 			</div>
@@ -105,128 +71,18 @@
 				{{ __('No stores found.') }}
 			</div>
 		</div>
-
-		<Dialog v-model="showMembersDialog" :options="{ size: 'xl' }">
-			<template #body>
-				<div class="p-6">
-					<div class="mb-4 text-lg font-semibold">
-						{{ __('Members - ') }} {{ selectedStore?.store_name }}
-					</div>
-					<div class="mb-4 flex justify-between">
-						<Button variant="solid" @click="showAddMemberForm = true">
-							<template #prefix>
-								<Plus class="size-4 stroke-1.5" />
-							</template>
-							{{ __('Add Member') }}
-						</Button>
-					</div>
-					<div class="max-h-[50vh] overflow-y-auto">
-						<table class="w-full">
-							<thead class="bg-surface-gray-2">
-								<tr>
-									<th class="text-left p-3">{{ __('Name') }}</th>
-									<th class="text-left p-3">{{ __('Email') }}</th>
-									<th class="text-left p-3">{{ __('Rank') }}</th>
-									<th class="text-left p-3">{{ __('Actions') }}</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y">
-								<tr v-for="member in storeMembers" :key="member.name">
-									<td class="p-3">{{ member.full_name }}</td>
-									<td class="p-3">{{ member.email }}</td>
-									<td class="p-3">{{ member.rank_name || '-' }}</td>
-									<td class="p-3">
-										<Button variant="ghost" @click="editMemberRank(member)">
-											<template #prefix>
-												<Pencil class="size-4 stroke-1.5" />
-											</template>
-										</Button>
-										<Button variant="ghost" @click="removeMemberAction(member)">
-											<template #prefix>
-												<Trash2 class="size-4 stroke-1.5 text-red-500" />
-											</template>
-										</Button>
-									</td>
-								</tr>
-							</tbody>
-						</table>
-						<div v-if="!storeMembers.length" class="py-8 text-center text-ink-gray-6">
-							{{ __('No members in this store.') }}
-						</div>
-					</div>
-				</div>
-			</template>
-		</Dialog>
-
-		<Dialog
-			v-model="showAddMemberForm"
-			:options="{
-				title: editingMember ? __('Edit Member Rank') : __('Add Member'),
-				size: 'lg',
-				actions: [
-					{
-						label: editingMember ? __('Update') : __('Add'),
-						variant: 'solid',
-						onClick: ({ close }) => saveMember(close),
-					},
-				],
-			}"
-		>
-			<template #body-content>
-				<div v-if="!editingMember" class="mb-4">
-					<FormControl
-						v-model="memberForm.user"
-						:label="__('Email')"
-						placeholder="user@example.com"
-						type="email"
-						class="w-full"
-					/>
-				</div>
-				<div v-else class="mb-4 space-y-4">
-					<FormControl
-						v-model="memberForm.email"
-						:label="__('Email')"
-						type="email"
-						class="w-full"
-						:disabled="true"
-					/>
-					<FormControl
-						v-model="memberForm.full_name"
-						:label="__('Full Name')"
-						type="text"
-						class="w-full"
-					/>
-				</div>
-				<div class="flex items-center">
-					<Link
-						class="w-full"
-						v-model="memberForm.rank"
-						doctype="Store Rank"
-						:label="__('Store Rank')"
-						placeholder="Select rank"
-					/>
-				</div>
-			</template>
-		</Dialog>
 	</div>
 </template>
 <script setup>
 import {
 	Button,
-	Dialog,
 	FormControl,
 	Breadcrumbs,
-	ListView,
-	ListHeader,
-	ListHeaderItem,
-	ListRows,
-	ListRow,
-	ListRowItem,
 	createResource,
 } from 'frappe-ui'
 import { ref, computed, watch } from 'vue'
-import { Plus, Search, Users, Trash2, Pencil } from 'lucide-vue-next'
-import Link from '@/components/Controls/Link.vue'
+import { Search } from 'lucide-vue-next'
+import StoreCard from '@/components/StoreCard.vue'
 
 const breadcrumbs = computed(() => [
 	{
@@ -235,50 +91,7 @@ const breadcrumbs = computed(() => [
 	},
 ])
 
-const storeColumns = computed(() => [
-	{
-		label: __('Store Name'),
-		key: 'store_name',
-		width: 2,
-	},
-	{
-		label: __('Store Code'),
-		key: 'store_code',
-		width: 1,
-	},
-	{
-		label: __('Province'),
-		key: 'province',
-		width: 1.5,
-	},
-	{
-		label: __('Regency'),
-		key: 'regency',
-		width: 1.5,
-	},
-	{
-		label: __('District'),
-		key: 'district',
-		width: 1.5,
-	},
-	{
-		label: __('Organization'),
-		key: 'organization',
-		width: 2,
-	},
-	{
-		label: __('Actions'),
-		key: 'actions',
-		width: 1,
-		align: 'right',
-	},
-])
-
 const search = ref('')
-const showMembersDialog = ref(false)
-const showAddMemberForm = ref(false)
-const editingMember = ref(null)
-const selectedStore = ref(null)
 
 const filters = ref({
 	province: '',
@@ -286,14 +99,8 @@ const filters = ref({
 	district: '',
 })
 
-const memberForm = ref({
-	user: '',
-	full_name: '',
-	rank: '',
-})
-
 const stores = createResource({
-	url: 'lms.lms.store.get_stores',
+	url: 'lms.lms.store.get_stores_with_member_count',
 	auto: true,
 	transform(data) {
 		return data.map(store => ({
@@ -303,6 +110,11 @@ const stores = createResource({
 			district: store.district || '',
 		}))
 	},
+})
+
+const storesWithMembers = createResource({
+	url: 'lms.lms.store.get_stores_with_member_count',
+	auto: true,
 })
 
 const provinces = createResource({
@@ -317,51 +129,6 @@ const getRegencies = createResource({
 const getDistricts = createResource({
 	url: 'lms.lms.store.get_districts',
 })
-
-const ranks = createResource({
-	url: 'lms.lms.store.get_store_ranks',
-	auto: true,
-})
-
-const getStoreMembers = createResource({
-	url: 'lms.lms.store.get_store_members',
-})
-
-const removeMember = createResource({
-	url: 'lms.lms.store.remove_member_from_store',
-	makeParams(values) {
-		return {
-			member: values.member,
-		}
-	},
-})
-
-const updateMemberRank = createResource({
-	url: 'lms.lms.store.update_member_rank',
-	makeParams(values) {
-		return {
-			member: values.member,
-			rank: values.rank,
-			full_name: values.full_name,
-		}
-	},
-	onError(error) {
-		console.error('Error updating member rank:', error)
-	},
-})
-
-const assignMember = createResource({
-	url: 'lms.lms.store.assign_member_to_store',
-	makeParams(values) {
-		return {
-			member: values.member,
-			store: values.store,
-			rank: values.rank,
-		}
-	},
-})
-
-const storeMembers = ref([])
 
 const storeList = computed(() => {
 	if (!stores.data) return []
@@ -400,6 +167,10 @@ const regencyOptions = ref([])
 const districtOptions = ref([])
 
 const onProvinceChange = async () => {
+	filters.value.regency = ''
+	filters.value.district = ''
+	districtOptions.value = []
+	
 	if (filters.value.province) {
 		try {
 			const regencies = await getRegencies.submit({ province: filters.value.province })
@@ -411,6 +182,8 @@ const onProvinceChange = async () => {
 }
 
 const onRegencyChange = async () => {
+	filters.value.district = ''
+	
 	if (filters.value.regency) {
 		try {
 			const districts = await getDistricts.submit({ regency: filters.value.regency })
@@ -420,76 +193,4 @@ const onRegencyChange = async () => {
 		}
 	}
 }
-
-const manageMembers = async (store) => {
-	selectedStore.value = store
-	showMembersDialog.value = true
-	loadMembers()
-}
-
-const loadMembers = async () => {
-	if (!selectedStore.value) return
-	try {
-		const members = await getStoreMembers.submit({
-			store: selectedStore.value.name,
-		})
-		storeMembers.value = members
-	} catch (error) {
-		console.error('Error loading members:', error)
-	}
-}
-
-const editMemberRank = (member) => {
-	editingMember.value = member
-	memberForm.value = {
-		user: member.name,
-		email: member.email,
-		full_name: member.full_name,
-		rank: member.store_rank,
-	}
-	showAddMemberForm.value = true
-}
-
-const removeMemberAction = async (member) => {
-	if (!confirm(`Remove ${member.full_name} from this store?`)) return
-	try {
-		await removeMember.submit({
-			member: member.name,
-		})
-		loadMembers()
-	} catch (error) {
-		console.error('Error removing member:', error)
-	}
-}
-
-const saveMember = async () => {
-	try {
-		if (editingMember.value) {
-			await updateMemberRank.submit({
-				member: editingMember.value.name,
-				rank: memberForm.value.rank,
-				full_name: memberForm.value.full_name,
-			})
-		} else {
-			await assignMember.submit({
-				member: memberForm.value.user,
-				store: selectedStore.value.name,
-				rank: memberForm.value.rank,
-			})
-		}
-		showAddMemberForm.value = false
-		editingMember.value = null
-		memberForm.value = { user: '', full_name: '', rank: '' }
-		loadMembers()
-	} catch (error) {
-		console.error('Error saving member:', error)
-	}
-}
-
-watch(showAddMemberForm, (val) => {
-	if (!val) {
-		editingMember.value = null
-		memberForm.value = { user: '', rank: '' }
-	}
-})
 </script>

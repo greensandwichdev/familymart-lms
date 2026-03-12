@@ -70,7 +70,6 @@ import EmailTemplates from '@/components/Settings/EmailTemplates.vue'
 import BrandSettings from '@/components/Settings/BrandSettings.vue'
 import ZoomSettings from '@/components/Settings/ZoomSettings.vue'
 import Badges from '@/components/Settings/Badges.vue'
-import Stores from '@/components/Settings/Stores.vue'
 
 const show = defineModel()
 const doctype = ref('LMS Settings')
@@ -201,19 +200,6 @@ const tabsStructure = computed(() => {
 					description: 'Manage the email templates for your learning system',
 					icon: 'MailPlus',
 					template: markRaw(EmailTemplates),
-				},
-			],
-		},
-		{
-			label: 'Stores',
-			hideLabel: false,
-			items: [
-				{
-					label: 'Stores',
-					description:
-						'Manage stores and assign members to stores with their ranks',
-					icon: 'Store',
-					template: markRaw(Stores),
 				},
 			],
 		},

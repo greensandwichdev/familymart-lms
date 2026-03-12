@@ -361,7 +361,8 @@ const updateMember = createResource({
 	makeParams() {
 		return {
 			member: memberForm.value.email,
-			rank: memberForm.value.store_rank,
+			store: memberForm.value.lms_store || null,
+			rank: memberForm.value.store_rank || null,
 			full_name: memberForm.value.full_name,
 		}
 	},

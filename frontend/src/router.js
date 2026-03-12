@@ -250,6 +250,12 @@ const routes = [
 		component: () => import('@/pages/Stores.vue'),
 	},
 	{
+		path: '/stores/:storeName',
+		name: 'StoreDetail',
+		component: () => import('@/pages/StoreDetail.vue'),
+		props: true,
+	},
+	{
 		path: '/members',
 		name: 'Members',
 		component: () => import('@/pages/Members.vue'),

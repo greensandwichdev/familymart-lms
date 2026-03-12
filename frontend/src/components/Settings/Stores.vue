@@ -73,6 +73,11 @@
 							</div>
 						</div>
 						<div class="flex items-center space-x-2">
+							<Button variant="ghost" @click.stop="editStore(store)">
+								<template #prefix>
+									<Pencil class="size-4 stroke-1.5" />
+								</template>
+							</Button>
 							<Button variant="ghost" @click.stop="manageMembers(store)">
 								<template #prefix>
 									<Users class="size-4 stroke-1.5" />
@@ -188,6 +193,42 @@
 				</div>
 			</template>
 		</Dialog>
+
+		<Dialog v-model="showEditStoreDialog" :options="{ size: 'md' }">
+			<template #body>
+				<div class="p-6">
+					<div class="text-lg font-semibold mb-4">
+						{{ __('Edit Store') }}
+					</div>
+					<form @submit.prevent="saveStore">
+						<div class="space-y-4">
+							<div>
+								<label class="block text-sm font-medium text-ink-gray-7 mb-1">
+									{{ __('Store Image') }}
+								</label>
+								<input
+									type="file"
+									accept="image/*"
+									@change="handleImageUpload"
+									class="block w-full text-sm text-ink-gray-5 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-surface-gray-2 file:text-ink-gray-7 hover:file:bg-surface-gray-3"
+								/>
+								<div v-if="storeForm.image" class="mt-2">
+									<img :src="storeForm.image" class="h-20 w-20 object-cover rounded-md" />
+								</div>
+							</div>
+						</div>
+						<div class="flex justify-end gap-2 mt-6">
+							<Button variant="subtle" @click="showEditStoreDialog = false">
+								{{ __('Cancel') }}
+							</Button>
+							<Button variant="solid" type="submit">
+								{{ __('Save') }}
+							</Button>
+						</div>
+					</form>
+				</div>
+			</template>
+		</Dialog>
 	</div>
 </template>
 
@@ -200,7 +241,7 @@ import {
 	createResource,
 } from 'frappe-ui'
 import { ref, computed, watch } from 'vue'
-import { Plus, Search, Users, Trash2 } from 'lucide-vue-next'
+import { Plus, Search, Users, Trash2, Pencil } from 'lucide-vue-next'
 
 const props = defineProps({
 	label: String,
@@ -210,7 +251,13 @@ const props = defineProps({
 const search = ref('')
 const showMembersDialog = ref(false)
 const showAddMemberForm = ref(false)
+const showEditStoreDialog = ref(false)
 const editingMember = ref(null)
+const editingStore = ref(null)
+
+const storeForm = ref({
+	image: '',
+})
 const selectedStore = ref(null)
 
 const filters = ref({
@@ -291,6 +338,25 @@ const assignMember = createResource({
 			store: values.store,
 			rank: values.rank,
 		}
+	},
+})
+
+const updateStore = createResource({
+	url: 'lms.lms.store.update_store',
+	makeParams(values) {
+		return {
+			store: values.name,
+			data: JSON.stringify({
+				image: values.image,
+			}),
+		}
+	},
+	onSuccess() {
+		showEditStoreDialog.value = false
+		stores.reload()
+	},
+	onError(error) {
+		console.error('Error updating store:', error)
 	},
 })
 
@@ -425,6 +491,36 @@ const saveMember = async () => {
 		loadMembers()
 	} catch (error) {
 		console.error('Error saving member:', error)
+	}
+}
+
+const editStore = (store) => {
+	editingStore.value = store
+	storeForm.value = {
+		image: store.image || '',
+	}
+	showEditStoreDialog.value = true
+}
+
+const handleImageUpload = (event) => {
+	const file = event.target.files[0]
+	if (!file) return
+
+	const reader = new FileReader()
+	reader.onload = (e) => {
+		storeForm.value.image = e.target.result
+	}
+	reader.readAsDataURL(file)
+}
+
+const saveStore = async () => {
+	try {
+		await updateStore.submit({
+			name: editingStore.value.name,
+			image: storeForm.value.image,
+		})
+	} catch (error) {
+		console.error('Error saving store:', error)
 	}
 }
 

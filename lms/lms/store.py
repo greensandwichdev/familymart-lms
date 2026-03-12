@@ -16,6 +16,7 @@ def get_stores():
 			"store_code",
 			"organization",
 			"address",
+			"image",
 			"province",
 			"regency",
 			"district",
@@ -29,6 +30,131 @@ def get_stores():
 			store.district = district_doc.district_name
 
 	return stores
+
+
+@frappe.whitelist()
+def get_stores_with_member_count():
+	"""Returns list of stores with member counts."""
+	stores = frappe.get_all(
+		"LMS Store",
+		filters={"is_active": 1},
+		fields=[
+			"name",
+			"store_name",
+			"store_code",
+			"organization",
+			"address",
+			"image",
+			"province",
+			"regency",
+			"district",
+			"is_active",
+		],
+		order_by="store_name",
+	)
+
+	for store in stores:
+		store["member_count"] = frappe.db.count("User", {"lms_store": store.name})
+		if store.district:
+			district_doc = frappe.get_doc("District", store.district)
+			store.district = district_doc.district_name
+
+	return stores
+
+
+@frappe.whitelist()
+def get_store_details(store):
+	"""Returns comprehensive store details including members and analytics."""
+	store_doc = frappe.get_doc("LMS Store", store)
+
+	province_name = store_doc.province
+	regency_name = store_doc.regency
+	district_name = store_doc.district
+
+	if province_name:
+		province_doc = frappe.get_doc("Province", province_name)
+		province_name = province_doc.name
+
+	if regency_name:
+		regency_doc = frappe.get_doc("Regency", regency_name)
+		regency_name = regency_doc.name
+
+	if district_name:
+		district_doc = frappe.get_doc("District", district_name)
+		district_name = district_doc.district_name
+
+	members = frappe.get_all(
+		"User",
+		filters={"lms_store": store},
+		fields=["name", "full_name", "email", "store_rank", "enabled"],
+		order_by="full_name",
+	)
+
+	for m in members:
+		if m.store_rank:
+			rank_doc = frappe.get_doc("Store Rank", m.store_rank)
+			m.rank_name = rank_doc.rank_name
+			m.rank_order = rank_doc.rank_order
+		else:
+			m.rank_name = None
+			m.rank_order = 0
+
+	member_stats = {}
+	for m in members:
+		rank = m.store_rank or "No Rank"
+		member_stats[rank] = member_stats.get(rank, 0) + 1
+
+	member_names = [m.name for m in members]
+	enrollments = []
+	program_stats = {}
+	total_enrollments = 0
+	completed_enrollments = 0
+	in_progress_enrollments = 0
+
+	if member_names:
+		enrollments = frappe.get_all(
+			"LMS Program Member",
+			filters={"member": ["in", member_names]},
+			fields=["member", "parent", "progress", "full_name"],
+		)
+
+		program_names = list(set([e.parent for e in enrollments]))
+		for prog_name in program_names:
+			prog_enrollments = [e for e in enrollments if e.parent == prog_name]
+			prog_completed = len([e for e in prog_enrollments if e.progress == 100])
+			prog_in_progress = len([e for e in prog_enrollments if 0 < e.progress < 100])
+			program_stats[prog_name] = {
+				"total": len(prog_enrollments),
+				"completed": prog_completed,
+				"in_progress": prog_in_progress,
+				"not_started": len(prog_enrollments) - prog_completed - prog_in_progress,
+			}
+
+		total_enrollments = len(enrollments)
+		completed_enrollments = len([e for e in enrollments if e.progress == 100])
+		in_progress_enrollments = len([e for e in enrollments if 0 < e.progress < 100])
+
+	return {
+		"name": store_doc.name,
+		"store_name": store_doc.store_name,
+		"store_code": store_doc.store_code,
+		"organization": store_doc.organization,
+		"address": store_doc.address,
+		"image": store_doc.image,
+		"province": province_name,
+		"regency": regency_name,
+		"district": district_name,
+		"is_active": store_doc.is_active,
+		"members": members,
+		"member_count": len(members),
+		"member_stats": member_stats,
+		"enrollments": enrollments,
+		"program_stats": program_stats,
+		"total_enrollments": total_enrollments,
+		"completed_enrollments": completed_enrollments,
+		"in_progress_enrollments": in_progress_enrollments,
+		"not_started_enrollments": total_enrollments - completed_enrollments - in_progress_enrollments,
+	}
 
 
 @frappe.whitelist()
@@ -130,32 +256,32 @@ def sync_programs_for_rank(rank):
 	programs = frappe.get_all(
 		"LMS Program",
 		fields=["name"],
-		filters=[
-			["LMS Program Rank", "store_rank", "=", rank]
-		],
+		filters=[["LMS Program Rank", "store_rank", "=", rank]],
 	)
 
 	for prog in programs:
 		try:
 			from lms.lms.api import sync_program_members_by_ranks
+
 			sync_program_members_by_ranks(prog.name)
 		except Exception as e:
 			frappe.log_error(f"Failed to sync program {prog.name}: {str(e)}")
 
 
 @frappe.whitelist()
-def update_member_rank(member, rank, full_name=None):
-	"""Updates a member's rank and optionally their full name."""
-	if not rank:
-		frappe.throw("Store Rank is mandatory")
-
-	frappe.db.set_value("User", member, "store_rank", rank)
+def update_member_rank(member, rank=None, full_name=None, store=None):
+	"""Updates a member's store, rank and optionally their full name."""
+	if store is not None:
+		frappe.db.set_value("User", member, "lms_store", store or None)
+	if rank is not None:
+		frappe.db.set_value("User", member, "store_rank", rank or None)
 	if full_name is not None:
 		frappe.db.set_value("User", member, "full_name", full_name)
 
-	sync_programs_for_rank(rank)
+	if rank:
+		sync_programs_for_rank(rank)
 
-	return {"member": member, "rank": rank}
+	return {"member": member, "store": store, "rank": rank}
 
 
 @frappe.whitelist()
