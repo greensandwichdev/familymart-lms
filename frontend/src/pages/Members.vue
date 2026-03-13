@@ -177,6 +177,13 @@
 						:label="__('Store Rank')"
 						placeholder="Select rank"
 					/>
+					<FormControl
+						v-model="memberForm.role"
+						:label="__('Role')"
+						type="select"
+						:options="roleOptions"
+						class="w-full"
+					/>
 				</div>
 			</template>
 		</Dialog>
@@ -222,6 +229,7 @@ import {
 	Dialog,
 	FormControl,
 	createResource,
+	toast,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import { ref, watch, computed } from 'vue'
@@ -236,6 +244,8 @@ type Member = {
 	user_image?: string
 	store_rank_name?: string
 	lms_store_name?: string
+	lms_store?: string
+	store_rank?: string
 }
 
 const router = useRouter()
@@ -300,7 +310,16 @@ const memberForm = ref({
 	full_name: '',
 	lms_store: '',
 	store_rank: '',
+	role: '',
 })
+
+const roleOptions = [
+	{ label: __('No Role'), value: '' },
+	{ label: __('Moderator'), value: 'Moderator' },
+	{ label: __('Course Creator'), value: 'Course Creator' },
+	{ label: __('Batch Evaluator'), value: 'Batch Evaluator' },
+	{ label: __('LMS Student'), value: 'LMS Student' },
+]
 
 const members = createResource({
 	url: 'lms.lms.api.get_members',
@@ -319,21 +338,23 @@ const members = createResource({
 })
 
 const createMember = createResource({
-	url: 'frappe.client.insert',
+	url: 'lms.lms.store.create_member',
 	makeParams() {
 		return {
-			doc: {
-				doctype: 'User',
-				email: memberForm.value.email,
-				full_name: memberForm.value.full_name,
-				send_login_email: 0,
-			},
+			email: memberForm.value.email,
+			full_name: memberForm.value.full_name,
+			lms_store: memberForm.value.lms_store || null,
+			store_rank: memberForm.value.store_rank || null,
 		}
 	},
 	auto: false,
 	onSuccess() {
-		if (memberForm.value.lms_store || memberForm.value.store_rank) {
-			return assignMember.reload()
+		if (memberForm.value.role) {
+			updateRole.submit({
+				user: memberForm.value.email,
+				role: memberForm.value.role,
+				value: true,
+			})
 		}
 	},
 })
@@ -392,6 +413,18 @@ const removeMember = createResource({
 	},
 })
 
+const updateRole = createResource({
+	url: 'lms.lms.api.save_role',
+	auto: false,
+	onSuccess() {
+		toast.success(__('Role updated successfully'))
+	},
+	onError(error) {
+		console.error('Error updating role:', error)
+		toast.error(__('Failed to update role'))
+	},
+})
+
 const openNewMemberDialog = () => {
 	editingMember.value = null
 	resetForm()
@@ -405,6 +438,7 @@ const editMember = (member: Member) => {
 		full_name: member.full_name,
 		lms_store: member.lms_store || '',
 		store_rank: member.store_rank || '',
+		role: member.role || '',
 	}
 	showMemberDialog.value = true
 }
@@ -421,6 +455,18 @@ const saveMember = async () => {
 		} else {
 			await createMember.submit()
 		}
+
+		if (memberForm.value.role) {
+			updateRole.submit({
+				user: memberForm.value.email,
+				role: memberForm.value.role,
+				value: true,
+			})
+		}
+
+		showMemberDialog.value = false
+		resetForm()
+		reloadMembers()
 	} catch (error) {
 		console.error('Error saving member:', error)
 	}
@@ -440,6 +486,7 @@ const resetForm = () => {
 		full_name: '',
 		lms_store: '',
 		store_rank: '',
+		role: '',
 	}
 }
 

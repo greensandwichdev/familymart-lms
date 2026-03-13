@@ -27,8 +27,15 @@ def after_insert(doc, method):
 			doc.add_roles("LMS Student")
 			frappe.logger().info(f"[AUTO-ROLE] Role LMS Student ditambahkan ke {doc.name}")
 
-		# 🔄 Jalankan juga sinkronisasi enrollment rank
-		sync_user_program_by_rank(doc)
+		# 🔄 Jadwalkan sinkronisasi enrollment rank secara async
+		frappe.enqueue(
+			"lms.lms.user.sync_user_program_by_rank",
+			user_name=doc.name,
+			queue="short",
+			timeout=300,
+			enqueue_after_commit=True,
+			now=frappe.in_test,
+		)
 
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Auto role & enroll after_insert User")
@@ -37,14 +44,25 @@ def after_insert(doc, method):
 def on_update(doc, method):
 	"""Saat user diupdate"""
 	try:
-		sync_user_program_by_rank(doc)
+		# Hanya jalankan jika store_rank atau enabled berubah
+		if doc.has_value_changed("store_rank") or doc.has_value_changed("enabled"):
+			frappe.enqueue(
+				"lms.lms.user.sync_user_program_by_rank",
+				user_name=doc.name,
+				queue="short",
+				timeout=300,
+				enqueue_after_commit=True,
+				now=frappe.in_test,
+			)
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Auto-enroll & sync rank on_update User")
 
 
-def sync_user_program_by_rank(doc):
+def sync_user_program_by_rank(user_name):
 	"""Sinkronisasi keanggotaan program berdasarkan store_rank user"""
 	try:
+		doc = frappe.get_doc("User", user_name)
+		
 		if doc.store_rank and doc.enabled:
 			matched_programs = set()
 			programs = frappe.get_all("LMS Program", fields=["name", "title"])

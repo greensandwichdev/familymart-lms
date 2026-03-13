@@ -180,7 +180,7 @@
 								</div>
 							</div>
 							<FileUploader
-								:fileTypes="['image/*']"
+								:fileTypes="['image/jpeg', 'image/png']"
 								:validateFile="validateFile"
 								@success="(file) => saveImage(file)"
 							>
@@ -192,6 +192,9 @@
 									</Button>
 								</template>
 							</FileUploader>
+							<div class="text-xs text-ink-gray-5 mt-1">
+								{{ __('Allowed: JPG, PNG') }}
+							</div>
 						</div>
 					</div>
 
@@ -428,7 +431,7 @@ const getGradientColor = () => {
 const validateFile = (file) => {
 	const extension = file.name.split('.').pop().toLowerCase()
 	if (!['jpg', 'jpeg', 'png'].includes(extension)) {
-		return 'Only image file is allowed.'
+		return 'Only JPG and PNG files are allowed.'
 	}
 }
 

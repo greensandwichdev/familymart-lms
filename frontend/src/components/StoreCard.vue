@@ -1,16 +1,19 @@
 <template>
 	<div
 		v-if="store.store_name"
-		class="flex flex-col h-full rounded-md border-2 overflow-auto text-ink-gray-9 hover:shadow-md transition-shadow cursor-pointer"
+		class="flex flex-col h-full rounded-md border-2 text-ink-gray-9 hover:shadow-md transition-shadow cursor-pointer"
 		style="min-height: 200px"
 	>
-		<div
-			class="w-[100%] h-[100px] bg-cover bg-center bg-no-repeat"
-			:style="cardStyle"
-		>
+		<div class="w-full h-32 overflow-hidden rounded-t-md">
+			<img
+				v-if="store.image"
+				:src="store.image"
+				class="w-full h-full object-cover"
+				:alt="store.store_name"
+			/>
 			<div
-				v-if="!store.image"
-				class="flex items-center justify-center text-white flex-1 font-bold my-auto px-5 text-center leading-5 h-full"
+				v-else
+				class="flex items-center justify-center text-white font-bold h-full px-5 text-center leading-5"
 			>
 				{{ store.store_name }}
 			</div>
@@ -41,10 +44,6 @@
 				{{ store.store_code }}
 			</div>
 
-			<div v-if="store.organization" class="text-sm text-ink-gray-6 mb-2">
-				{{ store.organization }}
-			</div>
-
 			<div class="text-sm text-ink-gray-5">
 				<div v-if="store.province || store.regency || store.district">
 					<MapPin class="h-3 w-3 inline mr-1" />
@@ -64,16 +63,6 @@ const props = defineProps({
 		type: Object,
 		default: null,
 	},
-})
-
-const cardStyle = computed(() => {
-	if (props.store?.image) {
-		return { backgroundImage: `url('${encodeURI(props.store.image)}')` }
-	}
-	return {
-		backgroundImage: getGradientColor(),
-		backgroundBlendMode: 'screen',
-	}
 })
 
 const regionDisplay = computed(() => {

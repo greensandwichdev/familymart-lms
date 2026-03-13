@@ -196,7 +196,7 @@ const isSessionUser = () => {
 
 const getTabButtons = () => {
 	let buttons = [{ label: 'About' }, { label: 'Certificates' }]
-	if ($user.data?.is_moderator) buttons.push({ label: 'Roles' })
+	if ($user.data?.is_moderator && !isSessionUser()) buttons.push({ label: 'Roles' })
 	if (
 		isSessionUser() &&
 		($user.data?.is_evaluator || $user.data?.is_moderator)

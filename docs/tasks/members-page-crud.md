@@ -4,7 +4,7 @@
 
 ### Task: Members Page CRUD Implementation
 
-**Status: IN_PROGRESS**
+**Status: COMPLETED**
 
 ---
 
@@ -43,10 +43,10 @@ Reference: `docs/plans/0003-members-page-crud.md`
 
 ### Phase 4: Testing
 
-- [ ] 4.1 Test Create - add new member
-- [ ] 4.2 Test Read - view member list
-- [ ] 4.3 Test Update - edit member store/rank
-- [ ] 4.4 Test Delete - remove member from store
+- [x] 4.1 Test Create - add new member
+- [x] 4.2 Test Read - view member list
+- [x] 4.3 Test Update - edit member store/rank
+- [x] 4.4 Test Delete - remove member from store
 
 ---
 

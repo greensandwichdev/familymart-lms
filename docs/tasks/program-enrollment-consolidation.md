@@ -1,5 +1,7 @@
 # Program Enrollment Consolidation Plan
 
+## Status: COMPLETED
+
 ## Overview
 
 Consolidate the program enrollment mechanism to support two methods:
