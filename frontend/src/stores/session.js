@@ -25,11 +25,22 @@ export const sessionStore = defineStore('lms-session', () => {
 		onError() {
 			throw new Error('Invalid email or password')
 		},
-		onSuccess() {
+		onSuccess(data) {
 			userResource.reload()
 			user.value = sessionUser()
 			login.reset()
-			router.replace({ path: '/' })
+
+			// Check if server wants to redirect (e.g., password reset)
+			const redirectTo = data?.redirect_to || (data?.message && data.message.redirect_to)
+			const homePage = data?.home_page
+
+			if (redirectTo) {
+				window.location.href = redirectTo
+			} else if (homePage) {
+				window.location.href = homePage
+			} else {
+				router.replace({ path: '/' })
+			}
 		},
 	})
 

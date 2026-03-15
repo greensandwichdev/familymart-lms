@@ -16,6 +16,35 @@ Reference: `docs/plans/0006-async-user-program-sync.md`
 
 ---
 
+## Important Fixes During Implementation
+
+### 1. Correct Frappe Python API
+
+> **NOTE:** Discovered that `frappe.db.insert()` does NOT exist in Frappe's Python API. Fixed by using `frappe.get_doc({...}).insert()` instead.
+
+```python
+# WRONG - causes AttributeError: 'MariaDBDatabase' object has no attribute 'insert'
+frappe.db.insert({
+    "doctype": "User",
+    "email": email,
+})
+
+# CORRECT
+doc = frappe.get_doc({
+    "doctype": "User",
+    "email": email,
+})
+doc.insert()
+```
+
+### 2. Hooks Behavior Clarification
+
+> **NOTE:** `frappe.get_doc().insert()` DOES trigger hooks (unlike what was originally planned). The plan was updated to:
+- Remove explicit `frappe.enqueue()` in `create_member` - rely on hooks instead
+- Add `frappe.flags.in_import` flag to skip hooks during bulk imports
+
+---
+
 ## Tasks Completed
 
 ### Phase 1: Modify sync_user_program_by_rank Function

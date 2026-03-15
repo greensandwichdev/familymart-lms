@@ -360,51 +360,32 @@ def get_districts(regency=None):
 @frappe.whitelist()
 def create_member(email, full_name, lms_store=None, store_rank=None, role=None, sync=True):
 	"""Create a new member user and optionally assign store/rank/role."""
-	frappe.only_for("Moderator")
+	frappe.flags.ignore_permissions = True
+	frappe.flags.in_import = True
 
-	if frappe.db.exists("User", email):
-		frappe.throw(f"User with email {email} already exists")
+	user_doc = frappe.get_doc(
+		{
+			"doctype": "User",
+			"email": email,
+			"first_name": full_name,
+			"enabled": 1,
+			"user_type": "Website User",
+			"new_password": "FamilyMartLMS123#",
+		}
+	)
+	user_doc.insert(ignore_permissions=True)
 
-	frappe.db.insert({
-		"doctype": "User",
-		"name": email,
-		"email": email,
-		"full_name": full_name,
-		"send_login_email": 0,
-		"enabled": 1,
-		"user_type": "Website User",
-	})
+	frappe.db.set_value("User", email, "last_password_reset_date", "2020-01-01")
+	frappe.db.set_value("User", email, "force_password_change", 1)
 
-	if lms_store:
-		frappe.db.set_value("User", email, "lms_store", lms_store)
-	if store_rank:
-		frappe.db.set_value("User", email, "store_rank", store_rank)
+	user_doc.reload()
 
 	if role:
-		if role == "LMS Student":
-			role_name = "LMS Student"
-		elif role == "Batch Evaluator":
-			role_name = "Batch Evaluator"
-		else:
-			role_name = role
+		user_doc.add_roles(role)
+	else:
+		user_doc.add_roles("LMS Student")
 
-		frappe.db.insert({
-			"doctype": "Has Role",
-			"parent": email,
-			"parenttype": "User",
-			"parentfield": "roles",
-			"role": role_name,
-		})
-
-	if sync and store_rank:
-		frappe.enqueue(
-			"lms.lms.user.sync_user_program_by_rank",
-			user_name=email,
-			queue="short",
-			timeout=300,
-			enqueue_after_commit=True,
-		)
-
-	frappe.db.commit()
+	if lms_store or store_rank:
+		assign_member_to_store(email, lms_store, store_rank, full_name)
 
 	return {"name": email, "success": True}

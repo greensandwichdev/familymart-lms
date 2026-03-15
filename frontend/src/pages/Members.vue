@@ -345,17 +345,17 @@ const createMember = createResource({
 			full_name: memberForm.value.full_name,
 			lms_store: memberForm.value.lms_store || null,
 			store_rank: memberForm.value.store_rank || null,
+			role: memberForm.value.role || null,
 		}
 	},
 	auto: false,
 	onSuccess() {
-		if (memberForm.value.role) {
-			updateRole.submit({
-				user: memberForm.value.email,
-				role: memberForm.value.role,
-				value: true,
-			})
-		}
+		showMemberDialog.value = false
+		resetForm()
+		reloadMembers()
+	},
+	onError(error) {
+		console.error('Error creating member:', error)
 	},
 })
 
@@ -452,21 +452,12 @@ const saveMember = async () => {
 	try {
 		if (editingMember.value) {
 			await updateMember.submit()
+			showMemberDialog.value = false
+			resetForm()
+			reloadMembers()
 		} else {
 			await createMember.submit()
 		}
-
-		if (memberForm.value.role) {
-			updateRole.submit({
-				user: memberForm.value.email,
-				role: memberForm.value.role,
-				value: true,
-			})
-		}
-
-		showMemberDialog.value = false
-		resetForm()
-		reloadMembers()
 	} catch (error) {
 		console.error('Error saving member:', error)
 	}

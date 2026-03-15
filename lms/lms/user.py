@@ -22,20 +22,26 @@ def validate_username_duplicates(doc, method):
 def after_insert(doc, method):
 	"""Saat user pertama kali dibuat"""
 	try:
-		# ✅ Tambahkan role LMS Student (jika belum ada)
-		if "LMS Student" not in [r.role for r in doc.get("roles") or []]:
-			doc.add_roles("LMS Student")
-			frappe.logger().info(f"[AUTO-ROLE] Role LMS Student ditambahkan ke {doc.name}")
+		# Skip if in bulk import mode
+		if frappe.flags.get("in_import"):
+			return
+
+		# TEMPORARILY DISABLED FOR DEBUG
+		# # ✅ Tambahkan role LMS Student (jika belum ada)
+		# if "LMS Student" not in [r.role for r in doc.get("roles") or []]:
+		#     doc.add_roles("LMS Student")
+		#     frappe.logger().info(f"[AUTO-ROLE] Role LMS Student ditambahkan ke {doc.name}")
 
 		# 🔄 Jadwalkan sinkronisasi enrollment rank secara async
-		frappe.enqueue(
-			"lms.lms.user.sync_user_program_by_rank",
-			user_name=doc.name,
-			queue="short",
-			timeout=300,
-			enqueue_after_commit=True,
-			now=frappe.in_test,
-		)
+		# TEMPORARILY DISABLED FOR DEBUG - uncomment after testing
+		# frappe.enqueue(
+		#     "lms.lms.user.sync_user_program_by_rank",
+		#     user_name=doc.name,
+		#     queue="short",
+		#     timeout=300,
+		#     enqueue_after_commit=True,
+		#     now=frappe.in_test,
+		# )
 
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Auto role & enroll after_insert User")
@@ -44,16 +50,22 @@ def after_insert(doc, method):
 def on_update(doc, method):
 	"""Saat user diupdate"""
 	try:
+		# Skip if in bulk import mode
+		if frappe.flags.get("in_import"):
+			return
+
 		# Hanya jalankan jika store_rank atau enabled berubah
 		if doc.has_value_changed("store_rank") or doc.has_value_changed("enabled"):
-			frappe.enqueue(
-				"lms.lms.user.sync_user_program_by_rank",
-				user_name=doc.name,
-				queue="short",
-				timeout=300,
-				enqueue_after_commit=True,
-				now=frappe.in_test,
-			)
+			# TEMPORARILY DISABLED FOR DEBUG - uncomment after testing
+			# frappe.enqueue(
+			#     "lms.lms.user.sync_user_program_by_rank",
+			#     user_name=doc.name,
+			#     queue="short",
+			#     timeout=300,
+			#     enqueue_after_commit=True,
+			#     now=frappe.in_test,
+			# )
+			pass
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Auto-enroll & sync rank on_update User")
 
@@ -62,7 +74,7 @@ def sync_user_program_by_rank(user_name):
 	"""Sinkronisasi keanggotaan program berdasarkan store_rank user"""
 	try:
 		doc = frappe.get_doc("User", user_name)
-		
+
 		if doc.store_rank and doc.enabled:
 			matched_programs = set()
 			programs = frappe.get_all("LMS Program", fields=["name", "title"])
@@ -196,6 +208,21 @@ def set_country_from_ip(login_manager=None, user=None):
 
 
 def on_login(login_manager):
+	import frappe
+
+	frappe.logger().info(f"DEBUG: on_login called for user: {login_manager.user}")
+
+	force_pwd = frappe.db.get_value("User", login_manager.user, "force_password_change")
+	frappe.logger().info(f"DEBUG: force_password_change = {force_pwd}")
+
+	# Check if user needs to force password change
+	if force_pwd:
+		frappe.logger().info("DEBUG: Setting redirect to /update-password")
+		frappe.local.response["redirect_to"] = "/update-password"
+		frappe.local.response["home_page"] = "/update-password"
+		frappe.local.response["message"] = "Password Reset"
+		return
+
 	default_app = frappe.db.get_single_value("System Settings", "default_app")
 	if default_app == "lms":
 		frappe.local.response["home_page"] = "/lms"

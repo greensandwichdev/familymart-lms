@@ -53,6 +53,25 @@ frappe.enqueue(
 )
 ```
 
+### Important: Correct Frappe Python API
+
+> **NOTE:** In Frappe's Python API, `frappe.db.insert()` does NOT exist. Use `frappe.get_doc({...}).insert()` instead.
+
+```python
+# WRONG - will cause AttributeError
+frappe.db.insert({
+    "doctype": "User",
+    "email": email,
+})
+
+# CORRECT
+doc = frappe.get_doc({
+    "doctype": "User",
+    "email": email,
+})
+doc.insert()
+```
+
 ---
 
 ## Implementation Plan
@@ -93,6 +112,10 @@ def sync_user_program_by_rank(user_name):
 def after_insert(doc, method):
     """Saat user pertama kali dibuat"""
     try:
+        # Skip if in bulk import mode
+        if frappe.flags.get("in_import"):
+            return
+        
         # ✅ Tambahkan role LMS Student (jika belum ada)
         if "LMS Student" not in [r.role for r in doc.get("roles") or []]:
             doc.add_roles("LMS Student")
@@ -113,6 +136,7 @@ def after_insert(doc, method):
 ```
 
 **Key changes:**
+- Added check for `frappe.flags.get("in_import")` to skip during bulk imports
 - Added `frappe.enqueue()` call
 - `enqueue_after_commit=True` - Ensures job is queued only after DB transaction commits
 - `now=frappe.in_test` - Runs synchronously during tests for faster test execution
@@ -130,6 +154,10 @@ Add condition to only run sync when relevant fields change:
 def on_update(doc, method):
     """Saat user diupdate"""
     try:
+        # Skip if in bulk import mode
+        if frappe.flags.get("in_import"):
+            return
+        
         # Hanya jalankan jika store_rank atau enabled berubah
         if doc.has_value_changed("store_rank") or doc.has_value_changed("enabled"):
             frappe.enqueue(
@@ -145,6 +173,7 @@ def on_update(doc, method):
 ```
 
 **Benefits:**
+- Added check for `frappe.flags.get("in_import")` to skip during bulk imports
 - Avoids unnecessary syncs when other user fields are updated
 - Reduces queue load
 
@@ -236,7 +265,7 @@ def update_member_rank(member, rank=None, full_name=None, store=None):
 
 **File:** `lms/lms/lms/store.py`
 
-The current fast-track API bypasses hooks. Add option to trigger async sync:
+The `create_member` API should rely on User hooks to trigger async sync (no explicit enqueue needed). For bulk imports, use a flag to skip hooks.
 
 ```python
 @frappe.whitelist()
@@ -247,15 +276,24 @@ def create_member(email, full_name, lms_store=None, store_rank=None, role=None, 
     if frappe.db.exists("User", email):
         frappe.throw(f"User with email {email} already exists")
 
-    frappe.db.insert({
+    user_doc = frappe.get_doc({
         "doctype": "User",
-        "name": email,
         "email": email,
         "full_name": full_name,
         "send_login_email": 0,
         "enabled": 1,
         "user_type": "Website User",
     })
+    
+    # Skip hooks for bulk imports (sync=False)
+    if not sync:
+        frappe.flags.in_import = True
+    
+    user_doc.insert()
+    
+    # Reset flag after insert
+    if not sync:
+        frappe.flags.in_import = False
 
     if lms_store:
         frappe.db.set_value("User", email, "lms_store", lms_store)
@@ -265,15 +303,8 @@ def create_member(email, full_name, lms_store=None, store_rank=None, role=None, 
     if role:
         # ... role assignment code ...
 
-    # Option to trigger async sync
-    if sync and store_rank:
-        frappe.enqueue(
-            "lms.lms.user.sync_user_program_by_rank",
-            user_name=email,
-            queue="short",
-            timeout=300,
-            enqueue_after_commit=True,
-        )
+    # Note: No explicit enqueue here - hooks will trigger async sync
+    # Hooks use frappe.enqueue() so sync runs in background
 
     frappe.db.commit()
 
@@ -281,8 +312,15 @@ def create_member(email, full_name, lms_store=None, store_rank=None, role=None, 
 ```
 
 **Parameters:**
-- `sync=True` (default) - Triggers async sync after creation
-- `sync=False` - Skips sync (useful for bulk imports)
+- `sync=True` (default) - Triggers hooks which will enqueue async sync
+- `sync=False` - Skips hooks for bulk imports (no sync)
+
+**How it works:**
+1. `user_doc.insert()` triggers User's `after_insert` hook
+2. Hook enqueues `sync_user_program_by_rank()` (async)
+3. For bulk imports (`sync=False`), set flag to skip hooks
+
+**Important:** Use `frappe.get_doc({...}).insert()` instead of `frappe.db.insert()` - the latter does NOT exist in Frappe's Python API.
 
 ---
 
@@ -319,25 +357,16 @@ frappe.enqueue(
 
 **Solution:** Already handled in existing logic. The async version will maintain this behavior.
 
-### 4. Bulk Import Performance
+### 5. Bulk Import with sync=False
 
 **Problem:** Creating 100+ users at once could flood the queue.
 
 **Solution:** 
-- Use `sync=False` in `create_member` for bulk imports
+- Use `sync=False` in `create_member` to skip hooks entirely
+- Hooks check for `frappe.flags.in_import` and skip if True
 - Run a scheduled batch sync job after bulk import completes
-- Or use chunked processing
 
-### 5. Race Condition with Hooks
-
-**Problem:** If we modify hooks to use enqueue, and also use `create_member` with `sync=True`, could run twice.
-
-**Solution:** 
-- The `create_member` API intentionally bypasses hooks (uses `frappe.db.insert` directly)
-- Adding explicit sync option ensures predictable behavior
-- Use either hook OR explicit sync, not both
-
-### 6. Test Mode
+### 5. Test Mode
 
 **Problem:** Tests might fail if jobs are queued but not executed.
 
@@ -367,8 +396,8 @@ frappe.enqueue(
 
 | File | Changes |
 |------|---------|
-| `lms/lms/lms/user.py` | Modify `sync_user_program_by_rank` to accept `user_name`, update `after_insert` and `on_update` hooks to use `frappe.enqueue` |
-| `lms/lms/lms/store.py` | Modify `assign_member_to_store`, `update_member_rank`, `sync_programs_for_rank` to use async; update `create_member` with `sync` parameter |
+| `lms/lms/lms/user.py` | Modify `sync_user_program_by_rank` to accept `user_name`, update `after_insert` and `on_update` hooks to use `frappe.enqueue` and check `frappe.flags.in_import` |
+| `lms/lms/lms/store.py` | Modify `create_member` to use `frappe.flags.in_import` for bulk imports |
 
 ---
 

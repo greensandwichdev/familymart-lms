@@ -485,11 +485,13 @@ def sync_program_members_by_ranks(program):
 
 		for user in users:
 			if user.name not in existing_members:
-				users_to_add.append({
-					"member": user.name,
-					"store_rank": rank,
-					"full_name": user.full_name,
-				})
+				users_to_add.append(
+					{
+						"member": user.name,
+						"store_rank": rank,
+						"full_name": user.full_name,
+					}
+				)
 				existing_members.add(user.name)
 
 	if not users_to_add:
@@ -1779,3 +1781,25 @@ def get_categories(doctype, filters):
 			categoryOptions.append({"label": category, "value": category})
 
 	return categoryOptions
+
+
+@frappe.whitelist()
+def update_password_with_flag_clear(key, old_password, new_password, confirm_password, logout_all_sessions=1):
+	"""Custom password update that clears force_password_change flag after success."""
+	from frappe.core.doctype.user.user import update_password as frappe_update_password
+
+	# Call Frappe's original update_password
+	result = frappe_update_password(
+		key=key,
+		old_password=old_password,
+		new_password=new_password,
+		confirm_password=confirm_password,
+		logout_all_sessions=logout_all_sessions,
+	)
+
+	# After successful password change, clear the force_password_change flag
+	if frappe.session.user != "Guest":
+		frappe.db.set_value("User", frappe.session.user, "force_password_change", 0)
+		frappe.db.set_value("User", frappe.session.user, "last_password_reset_date", frappe.utils.today())
+
+	return result
