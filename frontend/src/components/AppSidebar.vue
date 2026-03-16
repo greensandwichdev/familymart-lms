@@ -640,6 +640,29 @@ const setupSidebarForUser = () => {
 		)
 	}
 
+	// ✅ Filter links based on requiredRoles
+	const userRoles = userResource.data.roles || []
+	const isBrandAdmin = userResource.data.is_brand_admin
+	const isStoreManager = userResource.data.is_store_manager
+	const isSystemManager = userResource.data.is_system_manager
+
+	// Build effective roles for access check
+	const effectiveRoles = [...userRoles.map(r => r.role)]
+	if (isBrandAdmin) effectiveRoles.push('Brand Admin')
+	if (isStoreManager) effectiveRoles.push('Store Manager')
+	if (isSystemManager) effectiveRoles.push('System Manager')
+
+	sidebarLinks.value = sidebarLinks.value.filter((link) => {
+		// If no requiredRoles, allow access
+		if (!link.requiredRoles || link.requiredRoles.length === 0) {
+			return true
+		}
+		// Check if user has any of the required roles
+		return link.requiredRoles.some((requiredRole) =>
+			effectiveRoles.includes(requiredRole)
+		)
+	})
+
 	addPrograms()
 	addQuizzes()
 	addAssignments()

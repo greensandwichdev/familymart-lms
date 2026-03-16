@@ -162,18 +162,20 @@
 						class="w-full"
 						:required="true"
 					/>
-					<Link
+					<FormControl
 						class="w-full"
 						v-model="memberForm.lms_store"
-						doctype="LMS Store"
+						type="select"
+						:options="storeOptions"
+						:disabled="userResource.data?.is_store_manager"
 						:label="__('Store')"
-						:filters="{ is_active: 1 }"
 						placeholder="Select store"
 					/>
-					<Link
+					<FormControl
 						class="w-full"
 						v-model="memberForm.store_rank"
-						doctype="Store Rank"
+						type="select"
+						:options="rankOptions"
 						:label="__('Store Rank')"
 						placeholder="Select rank"
 					/>
@@ -232,23 +234,91 @@ import {
 	toast,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { RefreshCw, Search, Shield, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import Link from '@/components/Controls/Link.vue'
-
-type Member = {
-	username: string
-	full_name: string
-	name: string
-	role?: string
-	user_image?: string
-	store_rank_name?: string
-	lms_store_name?: string
-	lms_store?: string
-	store_rank?: string
-}
+import { usersStore } from '@/stores/user'
 
 const router = useRouter()
+const { userResource } = usersStore()
+
+// Fetch stores based on user access
+const stores = createResource({
+	url: 'lms.lms.store.get_stores',
+	auto: true,
+})
+
+// Fetch store ranks
+const ranks = createResource({
+	url: 'lms.lms.store.get_store_ranks',
+	auto: true,
+})
+
+// Store options computed property
+const storeOptions = computed(() => {
+	if (!stores.data) return []
+	
+	// If Store Manager, return only their own store (disabled)
+	if (userResource.data?.is_store_manager && userResource.data?.lms_store) {
+		const myStore = stores.data.find(s => s.name === userResource.data.lms_store)
+		if (myStore) {
+			return [{
+				label: myStore.store_name,
+				value: myStore.name,
+				disabled: true
+			}]
+		}
+	}
+	
+	// Otherwise return all accessible stores
+	return stores.data.map(store => ({
+		label: store.store_name,
+		value: store.name,
+	}))
+})
+
+// Rank options computed property
+const rankOptions = computed(() => {
+	if (!ranks.data) return []
+	return ranks.data.map(rank => ({
+		label: rank.rank_name,
+		value: rank.name,
+	}))
+})
+
+// Route guard - redirect if no access
+onMounted(() => {
+	const checkAccess = () => {
+		if (!userResource.data) return
+		
+		const roles = userResource.data.roles?.map(r => r.role) || []
+		const isBrandAdmin = userResource.data.is_brand_admin
+		const isStoreManager = userResource.data.is_store_manager
+		const isSystemManager = userResource.data.is_system_manager
+		
+		const effectiveRoles = [...roles]
+		if (isBrandAdmin) effectiveRoles.push('Brand Admin')
+		if (isStoreManager) effectiveRoles.push('Store Manager')
+		if (isSystemManager) effectiveRoles.push('System Manager')
+		
+		const requiredRoles = ['Brand Admin', 'Store Manager', 'System Manager']
+		const hasAccess = requiredRoles.some(role => effectiveRoles.includes(role))
+		
+		if (!hasAccess) {
+			router.push('/')
+		}
+	}
+	
+	if (userResource.data) {
+		checkAccess()
+	} else {
+		// Wait for userResource to load
+		const unwatch = watch(() => userResource.data, () => {
+			unwatch()
+			checkAccess()
+		})
+	}
+})
 
 const breadcrumbs = computed(() => [
 	{
@@ -316,6 +386,8 @@ const memberForm = ref({
 const roleOptions = [
 	{ label: __('No Role'), value: '' },
 	{ label: __('Moderator'), value: 'Moderator' },
+	{ label: __('Brand Admin'), value: 'Brand Admin' },
+	{ label: __('Store Manager'), value: 'Store Manager' },
 	{ label: __('Course Creator'), value: 'Course Creator' },
 	{ label: __('Batch Evaluator'), value: 'Batch Evaluator' },
 	{ label: __('LMS Student'), value: 'LMS Student' },

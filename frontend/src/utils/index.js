@@ -450,12 +450,14 @@ export function getSidebarLinks() {
 			icon: 'Store',
 			to: 'Stores',
 			activeFor: ['Stores'],
+			requiredRoles: ['Brand Admin', 'Store Manager', 'System Manager'],
 		},
 		{
 			label: 'Members',
 			icon: 'Users',
 			to: 'Members',
 			activeFor: ['Members'],
+			requiredRoles: ['Brand Admin', 'Store Manager', 'System Manager'],
 		},
 	]
 }

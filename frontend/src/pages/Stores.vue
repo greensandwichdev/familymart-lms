@@ -80,9 +80,50 @@ import {
 	Breadcrumbs,
 	createResource,
 } from 'frappe-ui'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search } from 'lucide-vue-next'
 import StoreCard from '@/components/StoreCard.vue'
+import { sessionStore } from '@/stores/session'
+import { usersStore } from '@/stores/user'
+
+const router = useRouter()
+const { user } = sessionStore()
+const { userResource } = usersStore()
+
+// Route guard - redirect if no access
+onMounted(() => {
+	const checkAccess = () => {
+		if (!userResource.data) return
+		
+		const roles = userResource.data.roles?.map(r => r.role) || []
+		const isBrandAdmin = userResource.data.is_brand_admin
+		const isStoreManager = userResource.data.is_store_manager
+		const isSystemManager = userResource.data.is_system_manager
+		
+		const effectiveRoles = [...roles]
+		if (isBrandAdmin) effectiveRoles.push('Brand Admin')
+		if (isStoreManager) effectiveRoles.push('Store Manager')
+		if (isSystemManager) effectiveRoles.push('System Manager')
+		
+		const requiredRoles = ['Brand Admin', 'Store Manager', 'System Manager']
+		const hasAccess = requiredRoles.some(role => effectiveRoles.includes(role))
+		
+		if (!hasAccess) {
+			router.push('/')
+		}
+	}
+	
+	if (userResource.data) {
+		checkAccess()
+	} else {
+		// Wait for userResource to load
+		const unwatch = watch(() => userResource.data, () => {
+			unwatch()
+			checkAccess()
+		})
+	}
+})
 
 const breadcrumbs = computed(() => [
 	{

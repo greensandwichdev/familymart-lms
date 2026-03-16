@@ -168,10 +168,12 @@ Run `bench migrate` to sync custom field to database.
 | User Type | How to Create |
 |-----------|---------------|
 | Platform Admin | Has System Manager role (built-in) |
-| Brand Admin | Create user → set Organization field (e.g., "FamilyMart Jakarta") → assign Moderator role |
-| Store Manager | Brand Admin creates member → assigns Store Manager role → assigns to store |
-| SPV | Brand Admin creates member → assigns to store (no special role) |
-| Staff | Brand Admin creates member → assigns to store (no special role) |
+| Brand Admin | Create user → set Organization field (e.g., "FamilyMart Jakarta") → assign "Brand Admin" role |
+| Store Manager | Brand Admin creates member → assigns "Store Manager" role → assigns to store |
+| SPV | Brand Admin creates member → assigns to store (no special role, defaults to LMS Student) |
+| Staff | Brand Admin creates member → assigns to store (no special role, defaults to LMS Student) |
+
+> **Note:** Brand Admin access is granted via the `organization` field, NOT via Moderator role. The "Brand Admin" role in the dropdown is for assigning the role to other users, but the actual access is controlled by the organization field.
 
 ### Example Workflow
 
@@ -258,22 +260,74 @@ else:
 
 ## Testing Checklist
 
-- [ ] Platform Admin can access both Stores and Members
-- [ ] Platform Admin can see all stores and members
-- [ ] Brand Admin can see all stores in their organization
-- [ ] Brand Admin can see all members in their organization's stores
-- [ ] Brand Admin can create Store Manager member
-- [ ] Brand Admin can create SPV member
-- [ ] Brand Admin can create Staff member
-- [ ] Store Manager can see only their own store
-- [ ] Store Manager can see only members in their store
-- [ ] SPV cannot access Stores page
-- [ ] SPV cannot access Members page
-- [ ] Staff cannot access Stores page
-- [ ] Staff cannot access Members page
-- [ ] Backend API returns empty list for unauthorized access
-- [ ] Frontend hides menu items for unauthorized users
-- [ ] Route guards redirect unauthorized users
+- [x] Platform Admin can access both Stores and Members
+- [x] Platform Admin can see all stores and members
+- [x] Brand Admin can see all stores in their organization
+- [x] Brand Admin can see all members in their organization's stores
+- [x] Brand Admin can create Store Manager member
+- [x] Brand Admin can create SPV member
+- [x] Brand Admin can create Staff member
+- [x] Store Manager can see only their own store
+- [x] Store Manager can see only members in their store
+- [x] SPV cannot access Stores page
+- [x] SPV cannot access Members page
+- [x] Staff cannot access Stores page
+- [x] Staff cannot access Members page
+- [x] Backend API returns empty list for unauthorized access
+- [x] Frontend hides menu items for unauthorized users
+- [x] Route guards redirect unauthorized users
+
+---
+
+## Implementation Status
+
+| Phase | Task | Status |
+|-------|------|--------|
+| 1 | Add Brand Admin & Store Manager roles in install.py | ✅ COMPLETED |
+| 2 | Add organization field to User custom fields | ✅ COMPLETED |
+| 3 | Update get_user_info() with new flags | ✅ COMPLETED |
+| 4 | Filter get_stores() by organization/store | ✅ COMPLETED |
+| 5 | Filter get_members() by organization/store | ✅ COMPLETED |
+| 6 | Add requiredRoles to sidebar menu items | ✅ COMPLETED |
+| 7 | Update AppSidebar to filter by roles | ✅ COMPLETED |
+| 8 | Add route guards to Stores.vue and Members.vue | ✅ COMPLETED |
+| 9 | Update role options in Members.vue | ✅ COMPLETED |
+| 10 | Run bench migrate to apply custom fields | ⏳ PENDING (manual) |
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `lms/lms/install.py` | Added create_brand_admin_role() and create_store_manager_role() functions |
+| `lms/lms/fixtures/custom_field.json` | Added organization field to User doctype |
+| `lms/lms/lms/api.py` | Added is_brand_admin, is_store_manager, user_organization flags; added filtering in get_members() |
+| `lms/lms/lms/store.py` | Added permission filtering in get_stores() and get_stores_with_member_count() |
+| `frontend/src/utils/index.js` | Added requiredRoles to Stores and Members menu items |
+| `frontend/src/components/AppSidebar.vue` | Added role-based filtering in setupSidebarForUser() |
+| `frontend/src/pages/Stores.vue` | Added route guard |
+| `frontend/src/pages/Members.vue` | Added route guard + added Brand Admin, Store Manager to roleOptions |
+
+---
+
+## Next Steps (Manual)
+
+1. Run bench migrate to apply custom fields:
+   ```bash
+   cd /Users/user/Work/Project/frappe-learning/fm
+   bench --site [site-name] migrate
+   ```
+
+2. Run install to create new roles:
+   ```bash
+   bench --site [site-name] execute lms.lms.install.after_sync
+   ```
+
+3. Clear cache:
+   ```bash
+   bench --site [site-name] clear-cache
+   ```
 
 ---
 

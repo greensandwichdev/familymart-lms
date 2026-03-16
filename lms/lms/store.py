@@ -6,10 +6,39 @@ from frappe import _
 
 @frappe.whitelist()
 def get_stores():
-	"""Returns the list of active stores."""
+	"""Returns the list of active stores based on user access."""
+	user = frappe.session.user
+	if user == "Guest":
+		return []
+
+	roles = frappe.get_roles(user)
+	user_info = frappe.db.get_value(
+		"User",
+		user,
+		["organization", "lms_store"],
+		as_dict=1,
+	)
+
+	filters = {"is_active": 1}
+
+	# System Manager: see all stores
+	if "System Manager" not in roles:
+		if "Store Manager" in roles:
+			# Store Manager: see only their own store
+			if user_info and user_info.lms_store:
+				filters["name"] = user_info.lms_store
+			else:
+				return []
+		elif user_info and user_info.organization:
+			# Brand Admin: see stores in their organization
+			filters["organization"] = user_info.organization
+		else:
+			# No access - user has no org and no store manager role
+			return []
+
 	stores = frappe.get_all(
 		"LMS Store",
-		filters={"is_active": 1},
+		filters=filters,
 		fields=[
 			"name",
 			"store_name",
@@ -34,10 +63,39 @@ def get_stores():
 
 @frappe.whitelist()
 def get_stores_with_member_count():
-	"""Returns list of stores with member counts."""
+	"""Returns list of stores with member counts based on user access."""
+	user = frappe.session.user
+	if user == "Guest":
+		return []
+
+	roles = frappe.get_roles(user)
+	user_info = frappe.db.get_value(
+		"User",
+		user,
+		["organization", "lms_store"],
+		as_dict=1,
+	)
+
+	filters = {"is_active": 1}
+
+	# System Manager: see all stores
+	if "System Manager" not in roles:
+		if "Store Manager" in roles:
+			# Store Manager: see only their own store
+			if user_info and user_info.lms_store:
+				filters["name"] = user_info.lms_store
+			else:
+				return []
+		elif user_info and user_info.organization:
+			# Brand Admin: see stores in their organization
+			filters["organization"] = user_info.organization
+		else:
+			# No access
+			return []
+
 	stores = frappe.get_all(
 		"LMS Store",
-		filters={"is_active": 1},
+		filters=filters,
 		fields=[
 			"name",
 			"store_name",
@@ -237,10 +295,16 @@ def assign_member_to_store(member, store, rank, full_name=None):
 	if not rank:
 		frappe.throw("Store Rank is mandatory")
 
+	current_user = frappe.session.user
+	current_user_org = frappe.db.get_value("User", current_user, "organization")
+
 	frappe.db.set_value("User", member, "lms_store", store)
 	frappe.db.set_value("User", member, "store_rank", rank)
 	if full_name is not None:
 		frappe.db.set_value("User", member, "full_name", full_name)
+
+	if current_user_org:
+		frappe.db.set_value("User", member, "organization", current_user_org)
 
 	frappe.enqueue(
 		"lms.lms.store.sync_programs_for_rank",

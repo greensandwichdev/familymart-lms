@@ -122,19 +122,24 @@
 				/>
 			</div>
 			<div class="flex items-center pt-5">
-				<Link
+				<FormControl
 					class="w-full"
 					v-model="member.store_rank"
-					doctype="Store Rank"
+					type="select"
+					:options="rankOptions"
 					:label="__('Store Rank')"
+					placeholder="Select rank"
 				/>
 			</div>
 			<div class="flex items-center pt-5">
-				<Link
+				<FormControl
 					class="w-full"
 					v-model="member.lms_store"
-					doctype="LMS Store"
+					type="select"
+					:options="storeOptions"
+					:disabled="userResource?.data?.is_store_manager"
 					:label="__('Store')"
+					placeholder="Select store"
 				/>
 			</div>
 		</template>
@@ -150,11 +155,12 @@ import {
 	FormControl,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
-import { ref, watch, reactive, inject } from 'vue'
+import { ref, watch, reactive, inject, computed } from 'vue'
 import { RefreshCw, Plus, Search, Shield } from 'lucide-vue-next'
 import { useOnboarding } from 'frappe-ui/frappe'
 import type { User } from '@/components/Settings/types'
 import Link from '../Controls/Link.vue'
+import { usersStore } from '@/stores/user'
 
 type Member = {
 	username: string
@@ -176,6 +182,51 @@ const showForm = ref(false)
 const dayjs = inject('$dayjs')
 const user = inject<User | null>('$user')
 const { updateOnboardingStep } = useOnboarding('learning')
+const { userResource } = usersStore()
+
+// Fetch stores based on user access
+const stores = createResource({
+	url: 'lms.lms.store.get_stores',
+	auto: true,
+})
+
+// Store options computed property
+const storeOptions = computed(() => {
+	if (!stores.data) return []
+	
+	// If Store Manager, return only their own store (disabled)
+	if (userResource?.data?.is_store_manager && userResource?.data?.lms_store) {
+		const myStore = stores.data.find(s => s.name === userResource.data.lms_store)
+		if (myStore) {
+			return [{
+				label: myStore.store_name,
+				value: myStore.name,
+				disabled: true
+			}]
+		}
+	}
+	
+	// Otherwise return all accessible stores
+	return stores.data.map(store => ({
+		label: store.store_name,
+		value: store.name,
+	}))
+})
+
+// Fetch store ranks
+const ranks = createResource({
+	url: 'lms.lms.store.get_store_ranks',
+	auto: true,
+})
+
+// Rank options computed property
+const rankOptions = computed(() => {
+	if (!ranks.data) return []
+	return ranks.data.map(rank => ({
+		label: rank.rank_name,
+		value: rank.name,
+	}))
+})
 
 const member = reactive({
 	email: '',

@@ -212,6 +212,21 @@ def on_login(login_manager):
 
 	frappe.logger().info(f"DEBUG: on_login called for user: {login_manager.user}")
 
+	roles = frappe.get_roles(login_manager.user)
+
+	if "Store Manager" in roles:
+		frappe.local.response["home_page"] = "/lms"
+		frappe.local.response["redirect_to"] = "/lms"
+		return
+
+	user_rank = frappe.db.get_value("User", login_manager.user, "store_rank")
+	if user_rank:
+		rank_name = frappe.db.get_value("Store Rank", user_rank, "rank_name")
+		if rank_name in ["SPV", "Staff"]:
+			frappe.local.response["home_page"] = "/lms"
+			frappe.local.response["redirect_to"] = "/lms"
+			return
+
 	force_pwd = frappe.db.get_value("User", login_manager.user, "force_password_change")
 	frappe.logger().info(f"DEBUG: force_password_change = {force_pwd}")
 

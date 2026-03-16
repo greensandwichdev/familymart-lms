@@ -77,6 +77,10 @@ const props = defineProps({
 		type: Object,
 		default: () => ({}),
 	},
+	query: {
+		type: String,
+		default: '',
+	},
 	modelValue: {
 		type: String,
 		default: '',
@@ -123,13 +127,14 @@ watchDebounced(
 
 const options = createResource({
 	url: 'frappe.desk.search.search_link',
-	cache: [props.doctype, text.value],
+	cache: [props.doctype, text.value, props.query],
 	method: 'POST',
 	auto: true,
 	params: {
 		txt: text.value,
 		doctype: props.doctype,
 		filters: props.filters,
+		...(props.query && { query: props.query }),
 	},
 	transform: (data) => {
 		return data.map((option) => {

@@ -25,10 +25,12 @@ def create_lms_roles():
 	create_moderator_role()
 	create_evaluator_role()
 	create_lms_student_role()
+	create_brand_admin_role()
+	create_store_manager_role()
 
 
 def delete_lms_roles():
-	roles = ["Course Creator", "Moderator"]
+	roles = ["Course Creator", "Moderator", "Brand Admin", "Store Manager"]
 	for role in roles:
 		if frappe.db.exists("Role", role):
 			frappe.db.delete("Role", role)
@@ -87,6 +89,36 @@ def create_lms_student_role():
 		role.update(
 			{
 				"role_name": "LMS Student",
+				"home_page": "",
+				"desk_access": 0,
+			}
+		)
+		role.save()
+
+
+def create_brand_admin_role():
+	if frappe.db.exists("Role", "Brand Admin"):
+		frappe.db.set_value("Role", "Brand Admin", "desk_access", 0)
+	else:
+		role = frappe.new_doc("Role")
+		role.update(
+			{
+				"role_name": "Brand Admin",
+				"home_page": "",
+				"desk_access": 0,
+			}
+		)
+		role.save()
+
+
+def create_store_manager_role():
+	if frappe.db.exists("Role", "Store Manager"):
+		frappe.db.set_value("Role", "Store Manager", "desk_access", 0)
+	else:
+		role = frappe.new_doc("Role")
+		role.update(
+			{
+				"role_name": "Store Manager",
 				"home_page": "",
 				"desk_access": 0,
 			}
@@ -176,7 +208,7 @@ def create_batch_source():
 
 
 def give_lms_roles_to_admin():
-	roles = ["Course Creator", "Moderator", "Batch Evaluator"]
+	roles = ["Course Creator", "Moderator", "Batch Evaluator", "Brand Admin", "Store Manager"]
 	for role in roles:
 		if not frappe.db.exists("Has Role", {"parent": "Administrator", "role": role}):
 			doc = frappe.new_doc("Has Role")

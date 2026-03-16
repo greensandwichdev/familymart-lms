@@ -1,0 +1,23 @@
+[
+  {
+    "name": "FamilyMart Jakarta",
+    "organization_code": "FM-JKT",
+    "organization_name": "FamilyMart Jakarta",
+    "description": "FamilyMart Jakarta Region",
+    "doctype": "Organization"
+  },
+  {
+    "name": "FamilyMart Surabaya",
+    "organization_code": "FM-SBY",
+    "organization_name": "FamilyMart Surabaya",
+    "description": "FamilyMart Surabaya Region",
+    "doctype": "Organization"
+  },
+  {
+    "name": "FamilyMart Bandung",
+    "organization_code": "FM-BDG",
+    "organization_name": "FamilyMart Bandung",
+    "description": "FamilyMart Bandung Region",
+    "doctype": "Organization"
+  }
+]

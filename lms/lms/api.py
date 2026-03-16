@@ -147,7 +147,7 @@ def get_user_info():
 	user = frappe.db.get_value(
 		"User",
 		frappe.session.user,
-		["name", "email", "enabled", "user_image", "full_name", "user_type", "username"],
+		["name", "email", "enabled", "user_image", "full_name", "user_type", "username", "organization", "lms_store"],
 		as_dict=1,
 	)
 	user["roles"] = frappe.get_roles(user.name)
@@ -157,6 +157,9 @@ def get_user_info():
 	user.is_student = not user.is_instructor and not user.is_moderator and not user.is_evaluator
 	user.is_fc_site = is_fc_site()
 	user.is_system_manager = "System Manager" in user.roles
+	user.is_brand_admin = bool(user.get("organization"))
+	user.is_store_manager = "Store Manager" in user.roles
+	user.user_organization = user.get("organization", "")
 	user.sitename = frappe.local.site
 	user.developer_mode = frappe.conf.developer_mode
 	if user.is_fc_site and user.is_system_manager:
@@ -312,8 +315,43 @@ def check_app_permission():
 
 @frappe.whitelist()
 def get_members(start=0, search=""):
+	user = frappe.session.user
+	if user == "Guest":
+		return []
+
+	roles = frappe.get_roles(user)
+	user_info = frappe.db.get_value(
+		"User",
+		user,
+		["organization", "lms_store"],
+		as_dict=1,
+	)
+
 	filters = {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]}
 	or_filters = {}
+
+	# System Manager: see all members
+	if "System Manager" not in roles:
+		if "Store Manager" in roles:
+			# Store Manager: see only members in their store
+			if user_info and user_info.lms_store:
+				filters["lms_store"] = user_info.lms_store
+			else:
+				return []
+		elif user_info and user_info.organization:
+			# Brand Admin: get stores in their org, then members
+			org_stores = frappe.get_all(
+				"LMS Store",
+				filters={"organization": user_info.organization},
+				pluck="name",
+			)
+			if org_stores:
+				filters["lms_store"] = ["in", org_stores]
+			else:
+				return []
+		else:
+			# No access
+			return []
 
 	if search:
 		or_filters["full_name"] = ["like", f"%{search}%"]
