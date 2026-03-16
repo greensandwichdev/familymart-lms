@@ -147,18 +147,29 @@ def get_user_info():
 	user = frappe.db.get_value(
 		"User",
 		frappe.session.user,
-		["name", "email", "enabled", "user_image", "full_name", "user_type", "username", "organization", "lms_store"],
+		[
+			"name",
+			"email",
+			"enabled",
+			"user_image",
+			"full_name",
+			"user_type",
+			"username",
+			"organization",
+			"lms_store",
+		],
 		as_dict=1,
 	)
-	user["roles"] = frappe.get_roles(user.name)
-	user.is_instructor = "Course Creator" in user.roles
-	user.is_moderator = "Moderator" in user.roles
-	user.is_evaluator = "Batch Evaluator" in user.roles
+	user_roles = frappe.get_roles(user.name)
+	user["roles"] = [{"role": r} for r in user_roles]
+	user.is_instructor = "Course Creator" in user_roles
+	user.is_moderator = "Moderator" in user_roles
+	user.is_evaluator = "Batch Evaluator" in user_roles
 	user.is_student = not user.is_instructor and not user.is_moderator and not user.is_evaluator
 	user.is_fc_site = is_fc_site()
-	user.is_system_manager = "System Manager" in user.roles
-	user.is_brand_admin = bool(user.get("organization"))
-	user.is_store_manager = "Store Manager" in user.roles
+	user.is_system_manager = "System Manager" in user_roles
+	user.is_brand_admin = "Brand Admin" in user_roles and bool(user.get("organization"))
+	user.is_store_manager = "Store Manager" in user_roles
 	user.user_organization = user.get("organization", "")
 	user.sitename = frappe.local.site
 	user.developer_mode = frappe.conf.developer_mode
@@ -338,8 +349,8 @@ def get_members(start=0, search=""):
 				filters["lms_store"] = user_info.lms_store
 			else:
 				return []
-		elif user_info and user_info.organization:
-			# Brand Admin: get stores in their org, then members
+		elif "Brand Admin" in roles and user_info and user_info.organization:
+			# Brand Admin: must have "Brand Admin" role AND organization field
 			org_stores = frappe.get_all(
 				"LMS Store",
 				filters={"organization": user_info.organization},

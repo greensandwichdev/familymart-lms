@@ -29,8 +29,8 @@ def get_stores():
 				filters["name"] = user_info.lms_store
 			else:
 				return []
-		elif user_info and user_info.organization:
-			# Brand Admin: see stores in their organization
+		elif "Brand Admin" in roles and user_info and user_info.organization:
+			# Brand Admin: must have "Brand Admin" role AND organization field
 			filters["organization"] = user_info.organization
 		else:
 			# No access - user has no org and no store manager role
@@ -86,8 +86,8 @@ def get_stores_with_member_count():
 				filters["name"] = user_info.lms_store
 			else:
 				return []
-		elif user_info and user_info.organization:
-			# Brand Admin: see stores in their organization
+		elif "Brand Admin" in roles and user_info and user_info.organization:
+			# Brand Admin: must have "Brand Admin" role AND organization field
 			filters["organization"] = user_info.organization
 		else:
 			# No access

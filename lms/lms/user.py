@@ -210,34 +210,23 @@ def set_country_from_ip(login_manager=None, user=None):
 def on_login(login_manager):
 	import frappe
 
-	frappe.logger().info(f"DEBUG: on_login called for user: {login_manager.user}")
-
 	roles = frappe.get_roles(login_manager.user)
+	user = login_manager.user
 
-	if "Store Manager" in roles:
-		frappe.local.response["home_page"] = "/lms"
-		frappe.local.response["redirect_to"] = "/lms"
+	# 1. System Manager (Platform Admin) -> /desk
+	if "System Manager" in roles:
+		frappe.local.response["redirect_to"] = "/desk"
+		frappe.local.response["home_page"] = "/desk"
 		return
 
-	user_rank = frappe.db.get_value("User", login_manager.user, "store_rank")
-	if user_rank:
-		rank_name = frappe.db.get_value("Store Rank", user_rank, "rank_name")
-		if rank_name in ["SPV", "Staff"]:
-			frappe.local.response["home_page"] = "/lms"
-			frappe.local.response["redirect_to"] = "/lms"
-			return
-
-	force_pwd = frappe.db.get_value("User", login_manager.user, "force_password_change")
-	frappe.logger().info(f"DEBUG: force_password_change = {force_pwd}")
-
-	# Check if user needs to force password change
+	# 2. Force password change check -> /update-password
+	force_pwd = frappe.db.get_value("User", user, "force_password_change")
 	if force_pwd:
-		frappe.logger().info("DEBUG: Setting redirect to /update-password")
 		frappe.local.response["redirect_to"] = "/update-password"
 		frappe.local.response["home_page"] = "/update-password"
 		frappe.local.response["message"] = "Password Reset"
 		return
 
-	default_app = frappe.db.get_single_value("System Settings", "default_app")
-	if default_app == "lms":
-		frappe.local.response["home_page"] = "/lms"
+	# 3. All other roles (Brand Admin, Store Manager, LMS Student, etc.) -> /lms
+	frappe.local.response["redirect_to"] = "/lms"
+	frappe.local.response["home_page"] = "/lms"
